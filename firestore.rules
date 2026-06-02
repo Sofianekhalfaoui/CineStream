@@ -1,0 +1,122 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Primitive Definition
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation Blueprints (Pillar 2)
+    function isValidUser(data) {
+      return data.uid == request.auth.uid 
+        && data.accountNumber is string && data.accountNumber.size() == 10
+        && data.displayName is string && data.displayName.size() <= 100
+        && data.email is string && data.email.size() <= 120
+        && (data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 600))
+        && (data.username == null || (data.username is string && data.username.size() >= 3 && data.username.size() <= 30))
+        && data.keys().hasAll(['uid', 'accountNumber', 'displayName', 'email', 'createdAt']);
+    }
+
+    function isValidFavorite(data) {
+      return data.id is number
+        && (data.poster_path == null || (data.poster_path is string && data.poster_path.size() <= 200))
+        && (data.media_type == null || (data.media_type in ['movie', 'tv']))
+        && (data.vote_average == null || data.vote_average is number)
+        && data.keys().hasAll(['id', 'addedAt'])
+        && data.keys().size() >= 2;
+    }
+
+    function isValidRoom(data) {
+      return data.hostId is string
+        && data.mediaId is string
+        && data.mediaType in ['movie', 'tv']
+        && data.currentTime is number
+        && data.isPlaying is bool
+        && data.participants is list
+        && data.lastUpdated is number
+        && data.keys().hasAll(['hostId', 'mediaId', 'mediaType', 'currentTime', 'isPlaying', 'participants', 'lastUpdated'])
+        && data.keys().size() == 7;
+    }
+
+    // Match Groups
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if false; // Users shouldn't list each other
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming())
+        && incoming().uid == existing().uid
+        && (
+          !('accountNumber' in existing()) || 
+          incoming().accountNumber == existing().accountNumber
+        );
+      allow delete: if false; // Account deletion not implemented yet
+
+      match /favorites/{favoriteId} {
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidFavorite(incoming());
+        allow update: if false; // Favorites are immutable, just delete and recreate
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    match /usernames/{username} {
+      allow get: if true; // Public lookup
+      allow create: if isSignedIn() 
+        && incoming().uid == request.auth.uid 
+        && incoming().username == username
+        && username.size() >= 3 && username.size() <= 30; // Removed strict regex to allow broader usernames
+      allow update, delete: if false;
+    }
+
+    match /rooms/{roomId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn() && isValidRoom(incoming()) && incoming().hostId == request.auth.uid;
+      allow update: if isSignedIn() && isValidRoom(incoming()) && (
+        // Host can update anything
+        existing().hostId == request.auth.uid ||
+        // Participants can only update their membership
+        (
+          incoming().diff(existing()).affectedKeys().hasOnly(['participants']) &&
+          incoming().participants.hasAll(existing().participants) &&
+          incoming().participants.size() == existing().participants.size() + 1 &&
+          incoming().participants.hasAny([request.auth.uid])
+        ) ||
+        // Participants leaving
+        (
+          incoming().diff(existing()).affectedKeys().hasAll(['participants']) &&
+          incoming().participants.size() == existing().participants.size() - 1 &&
+          !incoming().participants.hasAny([request.auth.uid])
+        )
+      );
+      allow delete: if isSignedIn() && (existing().hostId == request.auth.uid || existing().participants.size() == 0);
+    }
+    
+    // Test collection
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}

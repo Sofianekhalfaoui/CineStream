@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "User profile and preferences",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Auth UID" },
+        "accountNumber": { "type": "string", "description": "10-digit numeric account ID" },
+        "displayName": { "type": "string", "description": "User's display name" },
+        "email": { "type": "string", "format": "email", "description": "User's email" },
+        "photoURL": { "type": "string", "description": "User's avatar URL" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["uid", "accountNumber", "displayName", "email"]
+    },
+    "favorite": {
+      "title": "Favorite Content",
+      "description": "A movie or TV show favorited by a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number", "description": "TMDB ID" },
+        "title": { "type": "string", "description": "Title (for movies)" },
+        "name": { "type": "string", "description": "Name (for TV)" },
+        "poster_path": { "type": "string", "description": "Poster path" },
+        "backdrop_path": { "type": "string", "description": "Backdrop path" },
+        "media_type": { "type": "string", "enum": ["movie", "tv"], "description": "Type of content" },
+        "vote_average": { "type": "number", "description": "Rating" },
+        "release_date": { "type": "string", "description": "Release date" },
+        "first_air_date": { "type": "string", "description": "First air date" },
+        "addedAt": { "type": "string", "format": "date-time", "description": "Time added to favorites" }
+      },
+      "required": ["id", "addedAt"]
+    },
+    "room": {
+      "title": "Watch Party Room",
+      "description": "A synchronized watch party session",
+      "type": "object",
+      "properties": {
+        "hostId": { "type": "string", "description": "UID of the room creator" },
+        "mediaId": { "type": "string", "description": "TMDB ID of the content being watched" },
+        "mediaType": { "type": "string", "enum": ["movie", "tv"], "description": "Type of content" },
+        "currentTime": { "type": "number", "description": "Current playback time in seconds" },
+        "isPlaying": { "type": "boolean", "description": "Whether the media is currently playing" },
+        "participants": { "type": "array", "description": "List of participant UIDs" },
+        "lastUpdated": { "type": "number", "description": "Timestamp of last update" }
+      },
+      "required": ["hostId", "mediaId", "mediaType", "participants", "lastUpdated"]
+    },
+    "usernameMapping": {
+      "title": "Username Mapping",
+      "description": "Mapping from username to UID/Email for secondary lookup",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Auth UID" },
+        "email": { "type": "string", "format": "email", "description": "Auth Email" },
+        "username": { "type": "string", "description": "Lowercase username" }
+      },
+      "required": ["uid", "email", "username"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User profiles"
+    },
+    "/usernames/{username}": {
+      "schema": "usernameMapping",
+      "description": "Unique username lookups"
+    },
+    "/users/{userId}/favorites/{favoriteId}": {
+      "schema": "favorite",
+      "description": "User's favorited movies and TV shows"
+    },
+    "/rooms/{roomId}": {
+      "schema": "room",
+      "description": "Watch party rooms"
+    }
+  }
+}
