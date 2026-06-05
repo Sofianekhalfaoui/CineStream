@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Play, Heart, Share2, Plus, Film, Star, X, ChevronDown, ChevronRight, ChevronLeft, SkipForward, Calendar, MapPin, Download, Check, Users } from 'lucide-react';
 import { Movie, MovieDetailsData, CastMember, Episode, Season, PersonDetails } from '../types';
-import { fetchMovieDetails, fetchMovieCredits, getImageUrl, fetchMovieVideos, fetchSeasonDetails, getTmdbLanguage, fetchPersonDetails, fetchSimilar, fetchMovieImages } from '../services/tmdb';
+import { fetchMovieDetails, fetchMovieCredits, getImageUrl, fetchMovieVideos, fetchSeasonDetails, getTmdbLanguage, fetchPersonDetails, fetchSimilar, fetchMovieImages, fetchTrendingToday } from '../services/tmdb';
 import { useFavorites } from '../context/FavoritesContext';
 
 // Cinematic genre-specific dynamic typography stylings for fallbacks
@@ -77,6 +77,7 @@ import { useWatchParty } from '../context/WatchPartyContext';
 import { cn } from '../lib/utils';
 import { FastAverageColor } from 'fast-average-color';
 import MovieCard from './MovieCard';
+import AdsVerificationModal from './AdsVerificationModal';
 
 interface MovieDetailsProps {
   movie: Movie;
@@ -87,6 +88,7 @@ export default function MovieDetails({ movie, onClose }: MovieDetailsProps) {
   const [details, setDetails] = useState<MovieDetailsData | null>(null);
   const [cast, setCast] = useState<CastMember[]>([]);
   const [similar, setSimilar] = useState<Movie[]>([]);
+  const [trendingToday, setTrendingToday] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [trailerKey, setTrailerKey] = useState<string | null>(null);
   const [bgColor, setBgColor] = useState('#000000');
@@ -129,6 +131,13 @@ export default function MovieDetails({ movie, onClose }: MovieDetailsProps) {
   const [isSeasonOpen, setIsSeasonOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<PersonDetails | null>(null);
   const [personLoading, setPersonLoading] = useState(false);
+  const [isAdsModalOpen, setIsAdsModalOpen] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+
+  const handlePlayClick = (targetPath: string) => {
+    setPendingNavigation(targetPath);
+    setIsAdsModalOpen(true);
+  };
 
   const determinedMediaType = movie.media_type || ((movie.name || movie.first_air_date) ? 'tv' : 'movie');
   const isTV = determinedMediaType === 'tv';
@@ -181,12 +190,13 @@ export default function MovieDetails({ movie, onClose }: MovieDetailsProps) {
 
       const tmdbLang = getTmdbLanguage(language);
 
-      const [detailsData, creditsData, videosData, similarData, imagesData] = await Promise.all([
+      const [detailsData, creditsData, videosData, similarData, imagesData, trendingTodayData] = await Promise.all([
         fetchMovieDetails(movie.id, mediaType, tmdbLang),
         fetchMovieCredits(movie.id, mediaType, tmdbLang),
         fetchMovieVideos(movie.id, mediaType, tmdbLang),
         fetchSimilar(movie.id, mediaType, tmdbLang),
-        fetchMovieImages(movie.id, mediaType)
+        fetchMovieImages(movie.id, mediaType),
+        fetchTrendingToday(mediaType, tmdbLang)
       ]);
       
       setDetails(detailsData);
@@ -196,6 +206,10 @@ export default function MovieDetails({ movie, onClose }: MovieDetailsProps) {
       
       if (similarData) {
         setSimilar(similarData.slice(0, 10));
+      }
+
+      if (trendingTodayData) {
+        setTrendingToday(trendingTodayData.slice(0, 10));
       }
       
       if (videosData) {
@@ -349,7 +363,7 @@ export default function MovieDetails({ movie, onClose }: MovieDetailsProps) {
             <button 
               onClick={() => {
                 const type = isTV ? 'tv' : 'movie';
-                navigate(`/watch/${type}/${movie.id}${isTV ? '?s=1&e=1' : ''}`);
+                handlePlayClick(`/watch/${type}/${movie.id}${isTV ? '?s=1&e=1' : ''}`);
               }}
               className="w-full flex items-center justify-center gap-3 py-5 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white rounded-2xl font-black text-base uppercase tracking-tighter transition-all transform hover:scale-[1.01] active:scale-[0.98] shadow-2xl"
             >
@@ -472,7 +486,7 @@ export default function MovieDetails({ movie, onClose }: MovieDetailsProps) {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.4 }}
                 onClick={() => {
-                  navigate(`/watch/tv/${movie.id}?s=${selectedSeason}&e=${episode.episode_number}`);
+                  handlePlayClick(`/watch/tv/${movie.id}?s=${selectedSeason}&e=${episode.episode_number}`);
                 }}
                 className={cn("group relative flex flex-col md:flex-row gap-6 p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all cursor-pointer", isRTL && "md:flex-row-reverse")}
               >
@@ -557,6 +571,27 @@ export default function MovieDetails({ movie, onClose }: MovieDetailsProps) {
                 {similar.map(m => (
                   <div key={m.id} className="min-w-[140px] md:min-w-[190px]">
                     <MovieCard movie={m} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {trendingToday.length > 0 && (
+            <div className="space-y-8 mt-10">
+              <div className={cn("flex items-center gap-3", isRTL && "flex-row-reverse")}>
+                <div className="w-1.5 h-5 bg-primary rounded-full" />
+                <h3 className="text-sm font-black text-white uppercase tracking-widest italic">
+                  {isRTL 
+                    ? (isTV ? "أفضل 10 مسلسلات اليوم" : "أفضل 10 أفلام اليوم") 
+                    : (isTV ? "Today's Top 10 Series" : "Today's Top 10 Movies")}
+                </h3>
+              </div>
+              
+              <div className={cn("flex gap-6 overflow-x-auto pb-12 scrollbar-hide", isRTL && "flex-row-reverse")}>
+                {trendingToday.map((m, index) => (
+                  <div key={m.id} className="min-w-[140px] md:min-w-[190px]">
+                    <MovieCard movie={m} rank={index} />
                   </div>
                 ))}
               </div>
@@ -712,6 +747,20 @@ export default function MovieDetails({ movie, onClose }: MovieDetailsProps) {
           </div>
         )}
       </AnimatePresence>
+
+      <AdsVerificationModal
+        isOpen={isAdsModalOpen}
+        onClose={() => setIsAdsModalOpen(false)}
+        onComplete={() => {
+          setIsAdsModalOpen(false);
+          onClose();
+          if (pendingNavigation) {
+            navigate(pendingNavigation);
+            setPendingNavigation(null);
+          }
+        }}
+        movieTitle={movie.title || movie.name}
+      />
     </motion.div>
   );
 }

@@ -128,7 +128,7 @@ export default function Movies() {
       }
       
       const results = await Promise.all(promises);
-      const newMovies = results.flatMap(res => res.data.results);
+      const newMovies = results.flatMap(res => res.data?.results || []);
       
       setMoviesByGenre(prev => isInitial ? newMovies : [...prev, ...newMovies]);
       if (isInitial) setInitialLoading(false);
@@ -598,11 +598,7 @@ export default function Movies() {
             fetchUrl={requests.fetchTopRated} 
           />
 
-          {/* Lane 4: Now Playing Row */}
-          <MovieRow 
-            title={isRTL ? "يعرض الآن" : "Now Playing"} 
-            fetchUrl={requests.fetchNewReleases} 
-          />
+
 
           {/* Lane 5: Sci-Fi & Fantasy Category */}
           <MovieRow 

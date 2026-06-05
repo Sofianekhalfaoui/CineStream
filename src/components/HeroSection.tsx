@@ -107,7 +107,7 @@ export default function HeroSection({ fetchUrl, type }: HeroSectionProps) {
     async function fetchData() {
       try {
         const request = await axios.get(fetchUrl);
-        const results = request.data.results.slice(0, 10);
+        const results = (request.data?.results || []).slice(0, 10);
         setMovies(results);
       } catch (err) {
         console.error('Error fetching hero section movies:', err);

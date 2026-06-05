@@ -9,7 +9,7 @@ const model = "gemini-3-flash-preview";
 
 export async function getAiRecommendations(prompt: string, language: string = 'ar'): Promise<string[]> {
   const systemInstruction = `
-    You are a professional movie expert for the "CineStream" app.
+    You are a professional movie expert for the "FalakPlay" app.
     Your task is to suggest 5-8 movies based on the user's mood or request.
     Only return a JSON array of movie titles (strings).
     Example: ["Inception", "Interstellar", "The Dark Knight"]

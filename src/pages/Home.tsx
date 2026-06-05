@@ -9,7 +9,6 @@ import MovieCard from '../components/MovieCard';
 import { useSettings } from '../context/SettingsContext';
 
 import ContinueWatchingRow from '../components/ContinueWatchingRow';
-import ReleaseCalendar from '../components/ReleaseCalendar';
 
 export default function Home() {
   const { t, isRTL, language } = useLanguage();
@@ -26,13 +25,16 @@ export default function Home() {
         <ContinueWatchingRow history={history} />
 
         <MovieRow 
-          title={t('trending')} 
-          fetchUrl={requests.fetchTrending} 
+          title={t('top10Today')} 
+          fetchUrl={requests.fetchTrendingMoviesToday} 
           isLargeRow 
           isTop10 
         />
 
-        <ReleaseCalendar fetchUrl={requests.fetchUpcoming} />
+        <MovieRow 
+          title={t('trending')} 
+          fetchUrl={requests.fetchTrending} 
+        />
 
         <MovieRow 
           title={t('popular')} 
@@ -42,6 +44,21 @@ export default function Home() {
         <MovieRow 
           title={t('topRated')} 
           fetchUrl={requests.fetchTopRated} 
+        />
+
+        <MovieRow 
+          title={t('dramaMovies')} 
+          fetchUrl={requests.fetchDramaMovies} 
+        />
+
+        <MovieRow 
+          title={t('romanceMovies')} 
+          fetchUrl={requests.fetchRomanceMovies} 
+        />
+
+        <MovieRow 
+          title={t('bollywoodMovies')} 
+          fetchUrl={requests.fetchBollywoodMovies} 
         />
 
         <MovieRow 

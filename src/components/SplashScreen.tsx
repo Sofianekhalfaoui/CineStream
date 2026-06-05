@@ -42,7 +42,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             </span>
             <img 
               src="/src/assets/images/cinestream_logo_1779918074152.png" 
-              alt="CineStream Logo" 
+              alt="FalakPlay Logo" 
               className="w-80 md:w-[480px] h-auto object-contain select-none mix-blend-screen filter drop-shadow-[0_15px_40px_rgba(239,68,68,0.2)]"
               referrerPolicy="no-referrer"
             />

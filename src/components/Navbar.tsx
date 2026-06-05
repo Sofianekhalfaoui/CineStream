@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, Menu, X, Film, Tv, Heart, Download, Settings, LogOut, ArrowLeft, ArrowRight, Sparkles, User as UserIcon, Mic, Users, Clock } from 'lucide-react';
+import { Search, Bell, Menu, X, Film, Tv, Heart, Download, Settings, LogOut, ArrowLeft, ArrowRight, Sparkles, User as UserIcon, Mic, Users, Clock, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
@@ -424,9 +424,10 @@ export default function Navbar() {
                                 setRecentSearches([]);
                                 localStorage.removeItem('cinestream_recent_searches');
                               }}
-                              className="text-[10px] font-bold uppercase tracking-wider text-primary hover:underline transition-all"
+                              className="p-1.5 hover:bg-red-500/10 text-gray-400 hover:text-red-500 rounded-lg transition-colors"
+                              title={isRTL ? 'مسح الكل' : 'Clear All'}
                             >
-                              {isRTL ? 'مسح الكل' : 'Clear All'}
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                           <div className="flex flex-col gap-1.5 max-h-[30vh] overflow-y-auto scrollbar-hide">
@@ -473,9 +474,6 @@ export default function Navbar() {
                 </AnimatePresence>
             </div>
             )}
-            
-            {/* Notification Bell Center */}
-            {isHome && <NotificationCenter />}
 
             {/* Hamburger Menu Button & dropdown content placed on the absolute far right */}
             <div ref={menuRef} className="relative">

@@ -23,7 +23,7 @@ const DEFAULT_SETTINGS: Settings = {
   notifications: true,
   darkMode: true,
   accentColor: DEFAULT_ACCENT_COLOR,
-  contentFilter: true,
+  contentFilter: false,
   autoplayTrailers: true,
 };
 

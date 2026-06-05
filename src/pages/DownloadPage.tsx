@@ -445,8 +445,8 @@ export default function DownloadPage() {
             <ShieldCheck className="w-6 h-6 text-primary shrink-0 mt-0.5" />
             <p className="text-[11px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed">
               {isRTL 
-                ? 'سيتم تشفير التنزيل وحفظه بأمان للمشاهدة في وضع عدم الاتصال بالإنترنت داخل تطبيق CineStream فقط. يتم تخزين البيانات محلياً على جهازك ولا تستهلك باقة البيانات عند المشاهدة.' 
-                : 'Download will be encrypted and saved securely for offline viewing within CineStream app only. Data is stored locally on your device and does not consume data when watching.'}
+                ? 'سيتم تشفير التنزيل وحفظه بأمان للمشاهدة في وضع عدم الاتصال بالإنترنت داخل تطبيق فلك بلاي فقط. يتم تخزين البيانات محلياً على جهازك ولا تستهلك باقة البيانات عند المشاهدة.' 
+                : 'Download will be encrypted and saved securely for offline viewing within FalakPlay app only. Data is stored locally on your device and does not consume data when watching.'}
             </p>
           </div>
         </div>

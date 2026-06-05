@@ -44,6 +44,8 @@ export const getRequests = (lang: string = 'ar-SA', contentFilter: boolean = tru
     fetchSciFiFantasy: `${BASE_URL}/discover/movie?${commonParams}&with_genres=878%7C14`,
     fetchCrimeMystery: `${BASE_URL}/discover/movie?${commonParams}&with_genres=80%7C9648`,
     fetchRomanceMovies: `${BASE_URL}/discover/movie?${commonParams}&with_genres=10749`,
+    fetchDramaMovies: `${BASE_URL}/discover/movie?${commonParams}&with_genres=18`,
+    fetchBollywoodMovies: `${BASE_URL}/discover/movie?${commonParams}&with_original_language=hi`,
     fetchDocumentaries: `${BASE_URL}/discover/movie?${commonParams}&with_genres=99`,
     fetchMovies: `${BASE_URL}/discover/movie?${commonParams}`,
     fetchTVShows: `${BASE_URL}/discover/tv?${commonParams}`,
@@ -139,6 +141,16 @@ export const fetchSimilar = async (id: number, type: 'movie' | 'tv', lang: strin
     return response.data.results;
   } catch (error) {
     console.error('Error fetching similar:', error);
+    return [];
+  }
+};
+
+export const fetchTrendingToday = async (type: 'movie' | 'tv' | 'all' = 'movie', lang: string = 'ar-SA') => {
+  try {
+    const response = await api.get(`/trending/${type}/day?${getAuthParam()}&language=${lang}`);
+    return response.data.results;
+  } catch (error) {
+    console.error('Error fetching trending today:', error);
     return [];
   }
 };

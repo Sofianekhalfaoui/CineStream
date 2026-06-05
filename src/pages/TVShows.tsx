@@ -118,7 +118,7 @@ export default function TVShows() {
       }
       
       const results = await Promise.all(promises);
-      const newShows = results.flatMap(res => res.data.results);
+      const newShows = results.flatMap(res => res.data?.results || []);
       
       setShows(prev => isInitial ? newShows : [...prev, ...newShows]);
       if (isInitial) setInitialLoading(false);

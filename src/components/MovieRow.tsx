@@ -20,13 +20,27 @@ export default function MovieRow({ title, fetchUrl, isLargeRow, isTop10, headerR
     async function fetchData() {
       try {
         const request = await axios.get(fetchUrl);
-        setMovies(request.data.results);
+        const results = request.data.results || [];
+        
+        // Shuffle/mix results if NOT top 10 AND NOT a trending row
+        const shouldShuffle = !isTop10 && !fetchUrl.includes('/trending/');
+        
+        if (shouldShuffle && results.length > 0) {
+          const shuffledResult = [...results];
+          for (let i = shuffledResult.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledResult[i], shuffledResult[j]] = [shuffledResult[j], shuffledResult[i]];
+          }
+          setMovies(shuffledResult);
+        } else {
+          setMovies(results);
+        }
       } catch (err) {
         console.error('Failed to fetch movies for row', title, err);
       }
     }
     fetchData();
-  }, [fetchUrl, title]);
+  }, [fetchUrl, title, isTop10]);
 
   const scroll = (direction: 'left' | 'right') => {
     if (rowRef.current) {

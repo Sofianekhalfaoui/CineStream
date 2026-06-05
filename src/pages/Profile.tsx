@@ -73,7 +73,7 @@ const Profile: React.FC = () => {
             </h1>
             <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">
               {isRegistering 
-                ? (isRTL ? 'انضم إلى مجتمع CineStream' : 'Join the CineStream community') 
+                ? (isRTL ? 'انضم إلى مجتمع فلك بلاي' : 'Join the FalakPlay community') 
                 : (isRTL ? 'سجل دخولك لمتابعة المشاهدة' : 'Sign in to continue watching')}
             </p>
           </div>

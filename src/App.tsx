@@ -149,7 +149,7 @@ function AppContent() {
           </div>
         </div>
         <div className="flex items-center justify-between">
-          <span>&copy; 1997-2026 CineStream, Inc.</span>
+          <span>&copy; 1997-2026 FalakPlay, Inc.</span>
           <span className="text-red-600 font-bold">ALGERIA / MIDDLE EAST</span>
         </div>
       </footer>

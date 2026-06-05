@@ -15,15 +15,15 @@ export interface DownloadItem extends Omit<Movie, 'id'> {
   videoBlob?: Blob; // Future-proofing for real blobs
 }
 
-export class CineStreamDB extends Dexie {
+export class FalakPlayDB extends Dexie {
   downloads!: Table<DownloadItem>;
 
   constructor() {
-    super('CineStreamDB');
+    super('FalakPlayDB');
     this.version(1).stores({
       downloads: 'id, status, downloadDate'
     });
   }
 }
 
-export const db = new CineStreamDB();
+export const db = new FalakPlayDB();
