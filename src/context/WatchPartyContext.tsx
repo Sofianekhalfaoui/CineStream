@@ -12,6 +12,7 @@ interface RoomState {
   isPlaying: boolean;
   participants: string[];
   lastUpdated: number;
+  currentServerIndex?: number;
   lastReaction?: {
     emoji: string;
     userId: string;
@@ -23,7 +24,7 @@ interface WatchPartyContextType {
   roomId: string | null;
   roomState: RoomState | null;
   createRoom: (mediaId: string, mediaType: string) => Promise<string>;
-  joinRoom: (roomId: string) => Promise<void>;
+  joinRoom: (roomId: string) => Promise<RoomState>;
   leaveRoom: () => Promise<void>;
   updateRoomState: (updates: Partial<RoomState>) => Promise<void>;
   sendReaction: (emoji: string) => Promise<void>;
@@ -57,15 +58,17 @@ export const WatchPartyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [roomId]);
 
   const createRoom = async (mediaId: string, mediaType: string) => {
-    if (!user) throw new Error('Auth required');
-    const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const activeUser = user || auth.currentUser;
+    if (!activeUser) throw new Error('Auth required');
+    const newRoomId = Math.floor(1000 + Math.random() * 9000).toString();
     const initialState: RoomState = {
-      hostId: user.uid,
+      hostId: activeUser.uid,
       mediaId,
       mediaType,
       currentTime: 0,
       isPlaying: false,
-      participants: [user.uid],
+      participants: [activeUser.uid],
+      currentServerIndex: 0,
       lastUpdated: Date.now(),
     };
     try {
@@ -78,37 +81,51 @@ export const WatchPartyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const joinRoom = async (id: string) => {
-    if (!user) throw new Error('Auth required');
+  const joinRoom = async (id: string): Promise<RoomState> => {
+    const activeUser = user || auth.currentUser;
+    if (!activeUser) throw new Error('Auth required');
+    
+    let roomDoc;
     try {
-      const roomDoc = await getDoc(doc(db, 'rooms', id));
-      if (!roomDoc.exists()) throw new Error('Room not found');
-      
-      const data = roomDoc.data() as RoomState;
-      if (!data.participants.includes(user.uid)) {
-        await updateDoc(doc(db, 'rooms', id), {
-          participants: [...data.participants, user.uid]
-        });
-      }
-      setRoomId(id);
+      roomDoc = await getDoc(doc(db, 'rooms', id));
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `rooms/${id}`);
+      handleFirestoreError(error, OperationType.GET, `rooms/${id}`);
+      throw error;
     }
+
+    if (!roomDoc.exists()) {
+      throw new Error('Room not found');
+    }
+    
+    const data = roomDoc.data() as RoomState;
+    if (!data.participants.includes(activeUser.uid)) {
+      try {
+        await updateDoc(doc(db, 'rooms', id), {
+          participants: [...data.participants, activeUser.uid]
+        });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.UPDATE, `rooms/${id}`);
+        throw error;
+      }
+    }
+    setRoomId(id);
+    return data;
   };
 
   const leaveRoom = async () => {
-    if (!user || !roomId) return;
+    const activeUser = user || auth.currentUser;
+    if (!activeUser || !roomId) return;
     try {
       const roomDoc = await getDoc(doc(db, 'rooms', roomId));
       if (roomDoc.exists()) {
         const data = roomDoc.data() as RoomState;
-        const newParticipants = data.participants.filter(p => p !== user.uid);
+        const newParticipants = data.participants.filter(p => p !== activeUser.uid);
         if (newParticipants.length === 0) {
           await deleteDoc(doc(db, 'rooms', roomId));
         } else {
           await updateDoc(doc(db, 'rooms', roomId), {
             participants: newParticipants,
-            hostId: data.hostId === user.uid ? newParticipants[0] : data.hostId
+            hostId: data.hostId === activeUser.uid ? newParticipants[0] : data.hostId
           });
         }
       }
@@ -119,9 +136,10 @@ export const WatchPartyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const updateRoomState = async (updates: Partial<RoomState>) => {
-    if (!roomId || !user) return;
+    const activeUser = user || auth.currentUser;
+    if (!roomId || !activeUser) return;
     // Only host can update play/time
-    if (roomState?.hostId !== user.uid && (updates.isPlaying !== undefined || updates.currentTime !== undefined)) {
+    if (roomState?.hostId !== activeUser.uid && (updates.isPlaying !== undefined || updates.currentTime !== undefined)) {
       return;
     }
     try {
@@ -135,12 +153,13 @@ export const WatchPartyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const sendReaction = async (emoji: string) => {
-    if (!roomId || !user) return;
+    const activeUser = user || auth.currentUser;
+    if (!roomId || !activeUser) return;
     try {
       await updateDoc(doc(db, 'rooms', roomId), {
         lastReaction: {
           emoji,
-          userId: user.uid,
+          userId: activeUser.uid,
           timestamp: Date.now()
         }
       });

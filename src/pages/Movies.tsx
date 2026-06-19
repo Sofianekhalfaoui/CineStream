@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSettings } from '../context/SettingsContext';
-import { getRequests, getTmdbLanguage, getImageUrl, fetchMovieVideos } from '../services/tmdb';
+import { getRequests, getTmdbLanguage, getImageUrl, fetchMovieVideos, filterAdultContent } from '../services/tmdb';
 import MovieCard from '../components/MovieCard';
 import MovieRow from '../components/MovieRow';
 import { useMovie } from '../context/MovieContext';
@@ -41,6 +41,7 @@ export default function Movies() {
   const [isMuted, setIsMuted] = useState(true);
   const [trailerKey, setTrailerKey] = useState<string | null>(null);
   const [showVideo, setShowVideo] = useState(false);
+  const [startTrailer, setStartTrailer] = useState(false);
   const [isLoadingTrailer, setIsLoadingTrailer] = useState(false);
   
   const activeGenre = searchParams.get('genre') || 'all';
@@ -119,23 +120,26 @@ export default function Movies() {
   const fetchGenreGridMovies = async (pageNum: number, isInitial = false, genre = activeGenre, timeRange = activeTimeRange) => {
     setLoading(true);
     try {
-      const startPage = isInitial ? 1 : (pageNum - 1) * 3 + 1;
-      const promises = [];
-      
-      // Batch fetch multiple pages to keep the grid looking dense & full
-      for (let i = startPage; i < startPage + 3; i++) {
-        promises.push(axios.get(getFetchUrl(i, genre, timeRange)));
-      }
-      
-      const results = await Promise.all(promises);
-      const newMovies = results.flatMap(res => res.data?.results || []);
-      
-      setMoviesByGenre(prev => isInitial ? newMovies : [...prev, ...newMovies]);
-      if (isInitial) setInitialLoading(false);
+       const startPage = isInitial ? 1 : (pageNum - 1) * 3 + 1;
+       const promises = [];
+       
+       // Batch fetch multiple pages to keep the grid looking dense & full
+       for (let i = startPage; i < startPage + 3; i++) {
+         promises.push(axios.get(getFetchUrl(i, genre, timeRange)));
+       }
+       
+       const results = await Promise.all(promises);
+       const newMovies = results.flatMap(res => res.data?.results || []);
+       
+       // Apply adult content filter on the fetched grid movies list
+       const filteredMovies = filterAdultContent(newMovies, settings.contentFilter);
+       
+       setMoviesByGenre(prev => isInitial ? filteredMovies : [...prev, ...filteredMovies]);
+       if (isInitial) setInitialLoading(false);
     } catch (error) {
-      console.error("Error fetching grid movies:", error);
+       console.error("Error fetching grid movies:", error);
     } finally {
-      setLoading(false);
+       setLoading(false);
     }
   };
 
@@ -145,7 +149,8 @@ export default function Movies() {
       try {
         const response = await axios.get(requests.fetchTrendingMoviesToday);
         if (response.data.results && response.data.results.length > 0) {
-          const top5 = response.data.results.slice(0, 5);
+          const filtered = filterAdultContent(response.data.results, settings.contentFilter);
+          const top5 = filtered.slice(0, 5);
           setTrendingToday(top5);
         }
       } catch (err) {
@@ -160,7 +165,7 @@ export default function Movies() {
     } else {
       fetchGenreGridMovies(1, true, activeGenre, activeTimeRange);
     }
-  }, [activeGenre, activeTimeRange, language]);
+  }, [activeGenre, activeTimeRange, language, settings.contentFilter]);
 
   // Load youtube video trail for current movie section slide after 5 seconds delay
   useEffect(() => {
@@ -170,6 +175,7 @@ export default function Movies() {
     // Reset video player states for the newly active slide
     setTrailerKey(null);
     setShowVideo(false);
+    setStartTrailer(false);
     setIsLoadingTrailer(true);
 
     const selectedLang = language === 'ar' ? 'ar-SA' : language === 'fr' ? 'fr-FR' : 'en-US';
@@ -205,8 +211,15 @@ export default function Movies() {
 
     loadTrailer();
 
-    // Show movie poster backdrop for exactly 5 seconds first, then activate video
-    const displayTimer = setTimeout(() => {
+    // Start video advertisement/trailer in background after 3 seconds (3000ms)
+    const startTrailerTimer = setTimeout(() => {
+      if (isSubscribed) {
+        setStartTrailer(true);
+      }
+    }, 3000);
+
+    // Fade out poster image with smooth motion style after 5 seconds (5000ms) to reveal video already in play
+    const fadePosterTimer = setTimeout(() => {
       if (isSubscribed) {
         setShowVideo(true);
       }
@@ -214,7 +227,8 @@ export default function Movies() {
 
     return () => {
       isSubscribed = false;
-      clearTimeout(displayTimer);
+      clearTimeout(startTrailerTimer);
+      clearTimeout(fadePosterTimer);
     };
   }, [currentIndex, trendingToday, language]);
 
@@ -236,7 +250,7 @@ export default function Movies() {
     };
   }, [currentIndex, trendingToday, trailerKey, isLoadingTrailer]);
 
-  const handleDragEnd = (_: any, info: any) => {
+  const handlePanEnd = (_: any, info: any) => {
     const swipeThreshold = 50;
     if (info.offset.x > swipeThreshold) {
       // Swipe Right -> Previous
@@ -389,16 +403,27 @@ export default function Movies() {
       {activeGenre === 'all' && activeMovieSlide && (
         <motion.header 
           id="hero-header-banner"
-          className="relative w-full h-[65vh] md:h-[80vh] overflow-hidden flex items-end cursor-grab active:cursor-grabbing touch-none select-none"
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.15}
-          onDragEnd={handleDragEnd}
+          className="relative w-full h-[75vh] md:h-[88vh] overflow-hidden flex items-end touch-pan-y select-none"
+          onPanEnd={handlePanEnd}
         >
           {/* Background Media Container with AnimatePresence Fades */}
           <div className="absolute inset-0 z-0 bg-black">
-            <AnimatePresence mode="wait">
-              {!showVideo || !trailerKey ? (
+            {/* Render the trailer after 3 seconds (startTrailer is true) so it plays/buffers in the background */}
+            {trailerKey && startTrailer && (
+              <div id={`hero-trailer-wrapper-${activeMovieSlide.id}`} className="absolute inset-0 w-full h-full z-0">
+                <TrailerVideoPlayer
+                  videoKey={trailerKey}
+                  isMuted={isMuted}
+                  onEnded={() => {
+                    setCurrentIndex((prev) => (prev + 1) % trendingToday.length);
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Backdrop Image - displayed on top (z-10), fades out when showVideo is true to expose the running trailer */}
+            <AnimatePresence>
+              {(!showVideo || !trailerKey) && (
                 <motion.img
                   id={`hero-backdrop-img-${activeMovieSlide.id}`}
                   key={`img-${activeMovieSlide.id}`}
@@ -408,32 +433,14 @@ export default function Movies() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.98 }}
                   transition={{ duration: 1.0, ease: "easeInOut" }}
-                  className="absolute inset-0 w-full h-full object-cover object-top filter brightness-[0.7] md:brightness-75 pointer-events-none"
+                  className="absolute inset-0 w-full h-full object-cover object-top pointer-events-none z-10"
                 />
-              ) : (
-                <motion.div
-                  id={`hero-trailer-wrapper-${activeMovieSlide.id}`}
-                  key={`video-${activeMovieSlide.id}`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 1.0 }}
-                  className="absolute inset-0 w-full h-full"
-                >
-                  <TrailerVideoPlayer
-                    videoKey={trailerKey}
-                    isMuted={isMuted}
-                    onEnded={() => {
-                      setCurrentIndex((prev) => (prev + 1) % trendingToday.length);
-                    }}
-                  />
-                </motion.div>
               )}
             </AnimatePresence>
 
             {/* Premium Dark Sleek Gradients */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#070b19] via-transparent to-[#070b19]/40 z-10 pointer-events-none" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#070b19]/80 via-transparent to-[#070b19]/10 z-10 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#070b19] via-[#070b19]/30 to-transparent z-20 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#070b19]/60 via-transparent to-transparent z-20 pointer-events-none" />
           </div>
 
           {/* Top Navigation Frame Positioned Absolutely directly under the app logo */}

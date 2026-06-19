@@ -3,6 +3,7 @@ import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestoreUtils';
 
 interface AuthContextType {
   user: User | null;
@@ -36,49 +37,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (currentUser) {
         // Sync user to Firestore
         const userRef = doc(db, 'users', currentUser.uid);
-        let userSnap = await getDoc(userRef);
-        
-        if (!userSnap.exists() && !isSigningUpRef.current) {
-          // Generate a consistent 10-digit numeric ID from UID
-          const numericHash = Math.abs(currentUser.uid.split('').reduce((a, b) => {
-            a = ((a << 5) - a) + b.charCodeAt(0);
-            return a & a;
-          }, 0)).toString().padEnd(10, '0').substring(0, 10);
-
-          const newData: any = {
-            uid: currentUser.uid,
-            accountNumber: numericHash,
-            displayName: currentUser.displayName || '',
-            email: currentUser.email || '',
-            photoURL: currentUser.photoURL || '',
-            createdAt: new Date().toISOString()
-          };
-
-          // Try to find if they have a username mapping
-          try {
-            // This is just a backup for Google users or if signUp fails middle-way
-            if (currentUser.email && !currentUser.email.endsWith('@cinestream.internal')) {
-              const defaultUsername = currentUser.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '');
-              newData.username = defaultUsername;
-            }
-          } catch (e) {
-            console.error("Error setting default username", e);
-          }
-
-          await setDoc(userRef, newData);
-          setUserData(newData);
-        } else {
-          const data = userSnap.data();
-          if (!data.accountNumber) {
+        try {
+          const userSnap = await getDoc(userRef);
+          
+          if (!userSnap.exists() && !isSigningUpRef.current) {
+            // Generate a consistent 10-digit numeric ID from UID
             const numericHash = Math.abs(currentUser.uid.split('').reduce((a, b) => {
               a = ((a << 5) - a) + b.charCodeAt(0);
               return a & a;
             }, 0)).toString().padEnd(10, '0').substring(0, 10);
-            await updateDoc(userRef, { accountNumber: numericHash });
-            setUserData({ ...data, accountNumber: numericHash });
+
+            const newData: any = {
+              uid: currentUser.uid,
+              accountNumber: numericHash,
+              displayName: currentUser.displayName || '',
+              email: currentUser.email || '',
+              photoURL: currentUser.photoURL || '',
+              createdAt: new Date().toISOString()
+            };
+
+            // Try to find if they have a username mapping
+            try {
+              // This is just a backup for Google users or if signUp fails middle-way
+              if (currentUser.email && !currentUser.email.endsWith('@cinestream.internal')) {
+                const defaultUsername = currentUser.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '');
+                newData.username = defaultUsername;
+              }
+            } catch (e) {
+              console.error("Error setting default username", e);
+            }
+
+            await setDoc(userRef, newData);
+            setUserData(newData);
           } else {
-            setUserData(data);
+            const data = userSnap.data();
+            if (data && !data.accountNumber) {
+              const numericHash = Math.abs(currentUser.uid.split('').reduce((a, b) => {
+                a = ((a << 5) - a) + b.charCodeAt(0);
+                return a & a;
+              }, 0)).toString().padEnd(10, '0').substring(0, 10);
+              await updateDoc(userRef, { accountNumber: numericHash });
+              setUserData({ ...data, accountNumber: numericHash });
+            } else {
+              setUserData(data || null);
+            }
           }
+        } catch (error) {
+          handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`);
         }
       } else {
         setUserData(null);
@@ -98,7 +103,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Check username
       const usernameRef = doc(db, 'usernames', lowerUsername);
-      const usernameSnap = await getDoc(usernameRef);
+      let usernameSnap;
+      try {
+        usernameSnap = await getDoc(usernameRef);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.GET, `usernames/${lowerUsername}`);
+        throw error;
+      }
       if (usernameSnap.exists()) {
         throw new Error('Username already taken');
       }
@@ -117,20 +128,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Create user document first to avoid onAuthStateChanged racing without username
       const creationDate = new Date().toISOString();
-      await setDoc(doc(db, 'users', authUser.uid), {
-        uid: authUser.uid,
-        accountNumber: numericHash,
-        displayName: fullName,
-        username: lowerUsername,
-        email: authEmail,
-        createdAt: creationDate
-      });
+      try {
+        await setDoc(doc(db, 'users', authUser.uid), {
+          uid: authUser.uid,
+          accountNumber: numericHash,
+          displayName: fullName,
+          username: lowerUsername,
+          email: authEmail,
+          createdAt: creationDate
+        });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.CREATE, `users/${authUser.uid}`);
+        throw error;
+      }
 
-      await setDoc(usernameRef, {
-        uid: authUser.uid,
-        email: authEmail,
-        username: lowerUsername
-      });
+      try {
+        await setDoc(usernameRef, {
+          uid: authUser.uid,
+          email: authEmail,
+          username: lowerUsername
+        });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.CREATE, `usernames/${lowerUsername}`);
+        throw error;
+      }
 
       return authUser;
     } finally {
@@ -146,7 +167,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const lowerUsername = username.toLowerCase().trim();
     
     const usernameRef = doc(db, 'usernames', lowerUsername);
-    const usernameSnap = await getDoc(usernameRef);
+    let usernameSnap;
+    try {
+      usernameSnap = await getDoc(usernameRef);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, `usernames/${lowerUsername}`);
+      throw error;
+    }
     
     if (!usernameSnap.exists()) {
       throw new Error('Username not found');

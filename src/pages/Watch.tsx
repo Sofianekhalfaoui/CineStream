@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Share2, Heart, ChevronLeft, ChevronRight, Film, Users, X, Users2, Smile, ExternalLink, Calendar, MapPin, Play, Pause, HardDrive, Zap, FolderOpen, Flame, Server, Layers, Video, ChevronDown, Monitor, Maximize, Minimize, Settings, RotateCcw, RotateCw, Clock, FileText } from 'lucide-react';
+import { ArrowLeft, Share2, Heart, ChevronLeft, ChevronRight, Film, Users, X, Users2, Smile, ExternalLink, Calendar, MapPin, Play, Pause, HardDrive, Zap, Crown, FolderOpen, Flame, Server, Layers, Video, ChevronDown, Monitor, Maximize, Minimize, Settings, RotateCcw, RotateCw, Clock, FileText } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useWatchHistory } from '../context/WatchHistoryContext';
@@ -12,7 +12,7 @@ import { useToast } from '../context/ToastContext';
 import { useSettings } from '../context/SettingsContext';
 import { cn } from '../lib/utils';
 import { getTmdbLanguage, fetchPersonDetails, getImageUrl } from '../services/tmdb';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Tv } from 'lucide-react';
 import CustomVideoPlayer from '../components/CustomVideoPlayer';
 
 import { FastAverageColor } from 'fast-average-color';
@@ -72,12 +72,13 @@ export default function Watch() {
 
   const [movieData, setMovieData] = useState<any>(null);
   const [currentServer, setCurrentServer] = useState(0);
+
   const [plyrVideoUrl, setPlyrVideoUrl] = useState(SAMPLE_VIDEOS[0].url);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [isTheaterMode, setIsTheaterMode] = useState(false);
   const [reactions, setReactions] = useState<{ id: number, emoji: string }[]>([]);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
-  const [serversOpen, setServersOpen] = useState(true);
+  const [serversOpen, setServersOpen] = useState(false);
   const [topServersDropdownOpen, setTopServersDropdownOpen] = useState(false);
   const playerContainerRef = useRef<HTMLDivElement | null>(null);
   const [isPlayerFullscreen, setIsPlayerFullscreen] = useState(false);
@@ -85,11 +86,7 @@ export default function Watch() {
   // States for the ultra-premium custom control layer
   const [isPlaying, setIsPlaying] = useState(true);
   const [playerTime, setPlayerTime] = useState(0);
-  const [currentQuality, setCurrentQuality] = useState('1080p');
-  const [showQualityDropdown, setShowQualityDropdown] = useState(false);
-  const [showServerSelect, setShowServerSelect] = useState(false);
-  const [showSubtitleSelect, setShowSubtitleSelect] = useState(false);
-  const [activeSubtitle, setActiveSubtitle] = useState('Off');
+
 
   const availableReactions = ['❤️', '🔥', '😂', '😮', '😢', '🎬', '👏', '👻'];
 
@@ -129,6 +126,16 @@ export default function Watch() {
       }
     }
   }, [roomState?.lastReaction]);
+
+  // Synchronise selected server for the watcher
+  useEffect(() => {
+    if (roomState && user && roomState.hostId !== user.uid && roomState.currentServerIndex !== undefined) {
+      if (roomState.currentServerIndex !== currentServer) {
+        setCurrentServer(roomState.currentServerIndex);
+        setPlayerLoading(true);
+      }
+    }
+  }, [roomState?.currentServerIndex, roomState?.hostId, user, currentServer]);
 
   const toggleTheaterMode = () => {
     setIsTheaterMode(!isTheaterMode);
@@ -192,6 +199,136 @@ export default function Watch() {
       url: (id: string, s?: number, e?: number, imdbId?: string) => ''
     }] : []),
     {
+      id: 'vidfast',
+      name: 'Source 1',
+      nameAr: 'سيرفر Source 1',
+      badges: ['FAST', '1080p'],
+      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s ? `${title} Season ${s} Episode ${e}` : title,
+      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
+        ? `https://vidfast.pro/tv/${id}/${s}/${e}?autoPlay=true`
+        : `https://vidfast.pro/movie/${id}?autoPlay=true`
+    },
+    {
+      id: 'vidlink',
+      name: 'Source 2',
+      nameAr: 'سيرفر Source 2',
+      badges: ['FAST', '1080p'],
+      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s ? `${title} Season ${s} Episode ${e}` : title,
+      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
+        ? `https://vidlink.pro/tv/${id}/${s}/${e}`
+        : `https://vidlink.pro/movie/${id}`
+    },
+    {
+      id: 'nontongo',
+      name: 'Source 3',
+      nameAr: 'سيرفر Source 3',
+      badges: ['MULTI', '1080p'],
+      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s ? `${title} Season ${s} Episode ${e}` : title,
+      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
+        ? `https://www.NontonGo.win/embed/tv/${imdbId || id}/${s}/${e}`
+        : `https://www.NontonGo.win/embed/movie/${imdbId || id}`
+    },
+    {
+      id: 'vixsrc',
+      name: 'Source 4',
+      nameAr: 'سيرفر Source 4',
+      badges: ['FAST', '1080p'],
+      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s ? `${title} Season ${s} Episode ${e}` : title,
+      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
+        ? `https://vixsrc.to/tv/${id}/${s}/${e}`
+        : `https://vixsrc.to/movie/${id}`
+    },
+    {
+      id: 'vidcore',
+      name: 'source 5',
+      nameAr: 'سيرفر source 5',
+      badges: ['FAST', '1080p'],
+      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s ? `${title} Season ${s} Episode ${e}` : title,
+      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
+        ? `https://vidcore.net/tv/${id}/${s}/${e}?autoPlay=true`
+        : `https://vidcore.net/movie/${id}?autoPlay=true`
+    },
+    {
+      id: 'vidnest',
+      name: 'source 6',
+      nameAr: 'سيرفر source 6',
+      badges: ['FAST', '1080p'],
+      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s ? `${title} Season ${s} Episode ${e}` : title,
+      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
+        ? `https://vidnest.fun/tv/${id}/${s}/${e}`
+        : `https://vidnest.fun/movie/${id}`
+    },
+    {
+      id: 'peachify',
+      name: 'source 7',
+      nameAr: 'سيرفر source 7',
+      badges: ['FAST', '1080p'],
+      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s ? `${title} Season ${s} Episode ${e}` : title,
+      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
+        ? `https://peachify.top/embed/tv/${id}/${s}/${e}`
+        : `https://peachify.top/embed/movie/${id}`
+    },
+    {
+      id: 'vidsrcwiki',
+      name: 'source 8',
+      nameAr: 'سيرفر source 8',
+      badges: ['FAST', '1080p'],
+      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s ? `${title} Season ${s} Episode ${e}` : title,
+      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
+        ? `https://vidsrc.wiki/embed/tv/${id}/${s}/${e}`
+        : `https://vidsrc.wiki/embed/movie/${id}`
+    },
+    {
+      id: 'apiplayer',
+      name: 'source 9',
+      nameAr: 'سيرفر source 9',
+      badges: ['FAST', '1080p'],
+      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s ? `${title} Season ${s} Episode ${e}` : title,
+      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
+        ? `https://apiplayer.ru/embed/tv/${id}/${s}/${e}`
+        : `https://apiplayer.ru/embed/movie/${imdbId || id}`
+    },
+    {
+      id: 'cinezo',
+      name: 'source 10',
+      nameAr: 'سيرفر source 10',
+      badges: ['FAST', '1080p'],
+      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s ? `${title} Season ${s} Episode ${e}` : title,
+      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
+        ? `https://player.cinezo.live/embed/tv/${id}/${s}/${e}`
+        : `https://player.cinezo.live/embed/movie/${id}`
+    },
+    {
+      id: 'ezvidapi',
+      name: 'source 11',
+      nameAr: 'سيرفر source 11',
+      badges: ['FAST', '1080p'],
+      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s ? `${title} Season ${s} Episode ${e}` : title,
+      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
+        ? `https://ezvidapi.com/embed/tv/${id}/${s}/${e}?provider=popr`
+        : `https://ezvidapi.com/embed/movie/${id}?provider=popr`
+    },
+    {
+      id: 'superembed',
+      name: 'source 12',
+      nameAr: 'سيرفر source 12',
+      badges: ['FAST', '1080p'],
+      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s ? `${title} Season ${s} Episode ${e}` : title,
+      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
+        ? `https://www.superembed.stream/embed/tv?tmdb=${id}&sea=${s}&epi=${e}`
+        : `https://www.superembed.stream/embed/movie?tmdb=${id}`
+    },
+    {
+      id: 'vidup',
+      name: 'source',
+      nameAr: 'سيرفر source',
+      badges: ['FAST', '1080p'],
+      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s ? `${title} Season ${s} Episode ${e}` : title,
+      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
+        ? `https://vidup.to/tv/${id}/${s}/${e}?autoPlay=true`
+        : `https://vidup.to/movie/${id}?autoPlay=true`
+    },
+    {
       id: 'vipstream-a',
       name: 'vipstream-A',
       nameAr: 'سيرفر vipstream-A',
@@ -212,28 +349,6 @@ export default function Watch() {
         : `https://vidsrc.to/embed/movie/${imdbId || id}`
     },
     {
-      id: 'vipstream-b',
-      name: 'vipstream-B',
-      nameAr: 'سيرفر vipstream-B',
-      badges: ['1080p'],
-      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s ? `${title} Season ${s} Episode ${e}` : title,
-      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
-        ? `https://embed.su/embed/tv/${imdbId || id}/${s}/${e}`
-        : `https://embed.su/embed/movie/${imdbId || id}`
-    },
-    {
-      id: 'gdrive',
-      name: 'GDrive',
-      nameAr: 'سيرفر GDrive السريع',
-      badges: ['3 GB', '1080p'],
-      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s
-        ? `${title} S${String(s).padStart(2, '0')}E${String(e).padStart(2, '0')} ${epTitle || 'Step Into My Office'} 1080p AMZN WEB DL DDP5 1 Atmos H 264 FLUX EZTV`
-        : `${title} 1080p AMZN WEB DL DDP5 1 Atmos H 264 FLUX EZTV`,
-      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
-        ? `https://databasegdriveplayer.co/player.php?series=${id}&s=${s}&e=${e}`
-        : `https://databasegdriveplayer.co/player.php?tmdb=${id}`
-    },
-    {
       id: 'voe',
       name: 'voe',
       nameAr: 'سيرفر voe',
@@ -246,30 +361,6 @@ export default function Watch() {
         : `https://embed.smashystream.com/playere.php?tmdb=${id}`
     },
     {
-      id: 'savefiles',
-      name: 'savefiles',
-      nameAr: 'سيرفر savefiles',
-      badges: ['1080p'],
-      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s
-        ? `${title} S${String(s).padStart(2, '0')}E${String(e).padStart(2, '0')} ${epTitle || 'Step Into My Office'} 1080p AMZN WEB DL DDP5 1 Atmos H 264 RUDR mkv`
-        : `${title} 1080p AMZN WEB DL DDP5 1 Atmos H 264 RUDR mkv`,
-      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
-        ? `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}`
-        : `https://player.autoembed.cc/embed/movie/${id}`
-    },
-    {
-      id: 'streamwish',
-      name: 'streamwish',
-      nameAr: 'سيرفر streamwish',
-      badges: ['1080p'],
-      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s
-        ? `${title} S${String(s).padStart(2, '0')}E${String(e).padStart(2, '0')} ${epTitle || 'Step Into My Office'} 1080p AMZN WEB DL DDP5 1 Atmos H 264 RUDR mkv`
-        : `${title} 1080p AMZN WEB DL DDP5 1 Atmos H 264 RUDR mkv`,
-      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
-        ? `https://vidsrc.xyz/embed/tv/${imdbId || id}/${s}/${e}`
-        : `https://vidsrc.xyz/embed/movie/${imdbId || id}`
-    },
-    {
       id: 'doodstream',
       name: 'doodstream',
       nameAr: 'سيرفر doodstream',
@@ -280,30 +371,6 @@ export default function Watch() {
       url: (id: string, s?: number, e?: number, imdbId?: string) => s 
         ? `https://www.2embed.cc/embedtv/${id}?s=${s}&e=${e}`
         : `https://www.2embed.cc/embed/${id}`
-    },
-    {
-      id: 'mixdrop',
-      name: 'mixdrop',
-      nameAr: 'سيرفر mixdrop',
-      badges: ['446.8 MB', '1080p'],
-      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s
-        ? `${title} S${String(s).padStart(2, '0')}E${String(e).padStart(2, '0')} ${epTitle || 'Step Into My Office'} 1080p AMZN WEB DL DDP5 1 Atmos H 264 RUDR mkv mp4`
-        : `${title} 1080p AMZN WEB DL DDP5 1 Atmos H 264 RUDR mkv mp4`,
-      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
-        ? `https://moviesapi.club/tv/${id}-${s}-${e}`
-        : `https://moviesapi.club/movie/${id}`
-    },
-    {
-      id: 'vidmoly',
-      name: 'vidmoly',
-      nameAr: 'سيرفر vidmoly',
-      badges: ['?'],
-      filename: (title: string, s?: number, e?: number, epTitle?: string, year?: string) => s
-        ? `${title} ${year || '2026'} Season ${s} Episode ${e} ${epTitle || 'Step Into My Office'}`
-        : `${title} ${year || '2026'} Movie`,
-      url: (id: string, s?: number, e?: number, imdbId?: string) => s 
-        ? `https://multiembed.to/?video_id=${imdbId || id}&s=${s}&e=${e}`
-        : `https://multiembed.to/?video_id=${imdbId || id}`
     }
   ];
   const [seasonData, setSeasonData] = useState<any>(null);
@@ -406,6 +473,8 @@ export default function Watch() {
 
     return () => clearInterval(interval);
   }, [movieData, isTrailer, loading, playerLoading, season, episode, updateProgress]);
+
+
 
   useEffect(() => {
     const fetchMovie = async () => {
@@ -518,7 +587,10 @@ export default function Watch() {
   };
 
   const handleBack = () => {
-    if (window.history.length <= 1) {
+    const lastCatalogPath = sessionStorage.getItem('lastCatalogPath');
+    if (lastCatalogPath) {
+      navigate(lastCatalogPath);
+    } else {
       if (mediaType === 'tv') {
         navigate('/tv');
       } else if (mediaType === 'movie') {
@@ -526,8 +598,6 @@ export default function Watch() {
       } else {
         navigate('/');
       }
-    } else {
-      navigate(-1);
     }
   };
 
@@ -738,138 +808,75 @@ export default function Watch() {
           "max-w-4xl mx-auto flex flex-col gap-10"
         )}>
           {/* Always-visible Player Switcher Option Above Video Frame */}
-          {!isTrailer && availableServers.length > 1 && (
-            <div className="w-full max-w-3xl mx-auto flex flex-col gap-4">
-              <div className="flex items-center justify-between">
+          {!isTrailer && availableServers.length > 1 && !(roomState && user && roomState.hostId !== user.uid) && (
+            <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 relative z-[250]">
+              <div className="relative inline-block">
                 <button
                   onClick={() => setServersOpen(!serversOpen)}
-                  className="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2.5 shadow-lg shadow-indigo-600/30 cursor-pointer"
+                  className={cn(
+                    "px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2.5 shadow-xl cursor-pointer select-none outline-none border",
+                    serversOpen
+                      ? "bg-[#5B4EFF] border-transparent text-white shadow-[#5B4EFF]/40"
+                      : "bg-[#5B4EFF]/90 hover:bg-[#5B4EFF] border-transparent text-white hover:shadow-[#5B4EFF]/50"
+                  )}
                 >
-                  <Server className="w-4 h-4" />
+                  <Server className="w-4 h-4 shrink-0" />
                   <span>{isRTL ? 'السيرفرات' : 'SERVERS'}</span>
-                  <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", serversOpen ? "rotate-180" : "rotate-0")} />
+                  <span className="text-[10px] font-bold leading-none ml-1">{serversOpen ? '▲' : '▼'}</span>
                 </button>
-              </div>
 
-              <AnimatePresence>
-                {serversOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="w-full bg-[#0a0a0c] border border-white/5 rounded-3xl p-3 flex flex-col gap-2 max-h-[480px] overflow-y-auto custom-scrollbar shadow-2xl">
-                      {availableServers.map((server, index) => {
-                        const activeTitle = movieData ? (movieData.title || movieData.name) : 'Spider-Noir';
-                        const activeYear = String(movieData?.release_date ? new Date(movieData.release_date).getFullYear() : movieData?.first_air_date ? new Date(movieData.first_air_date).getFullYear() : '2026');
-                        // Dynamically fetch the current episode's title if present, otherwise default
-                        const epTitle = (seasonData?.episodes && episode) ? (seasonData.episodes[episode - 1]?.name || `Episode ${episode}`) : '';
-                        // Generate filename string
-                        const filenameStr = server.filename 
-                          ? server.filename(activeTitle, season, episode, epTitle, activeYear)
-                          : activeTitle;
-
-                        // Map server names to logos & brand colors for the screenshot styling
-                        let iconComp = <Play className="w-4 h-4 fill-white text-white" />;
-                        let iconBg = "bg-blue-600/20 text-blue-400 border border-blue-500/20";
-                        if (server.id === 'gdrive') {
-                          iconComp = <HardDrive className="w-4 h-4 text-emerald-400" />;
-                          iconBg = "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20";
-                        } else if (server.id === 'voe') {
-                          iconComp = <Layers className="w-4 h-4 text-sky-400" />;
-                          iconBg = "bg-sky-500/20 text-sky-400 border border-sky-500/20";
-                        } else if (server.id === 'savefiles') {
-                          iconComp = <FolderOpen className="w-4 h-4 text-indigo-400" />;
-                          iconBg = "bg-indigo-500/20 text-indigo-400 border border-indigo-500/20";
-                        } else if (server.id === 'streamwish') {
-                          iconComp = <Flame className="w-4 h-4 text-amber-500" />;
-                          iconBg = "bg-amber-500/20 text-amber-400 border border-amber-500/20";
-                        } else if (server.id === 'doodstream') {
-                          iconComp = <Server className="w-4 h-4 text-yellow-500" />;
-                          iconBg = "bg-yellow-500/20 text-yellow-400 border border-yellow-500/20";
-                        } else if (server.id === 'mixdrop') {
-                          iconComp = <Zap className="w-4 h-4 text-cyan-400" />;
-                          iconBg = "bg-cyan-500/20 text-cyan-400 border border-cyan-500/20";
-                        } else if (server.id === 'vidmoly') {
-                          iconComp = <Video className="w-4 h-4 text-rose-400" />;
-                          iconBg = "bg-rose-500/20 text-rose-400 border border-rose-500/20";
-                        } else if (server.id.startsWith('vipstream')) {
-                          iconBg = "bg-blue-600/40 text-blue-100 border border-blue-500/30";
-                        }
-
-                        const isSelected = currentServer === index;
-
-                        return (
-                          <button
-                            key={server.id}
-                            onClick={() => {
-                              setCurrentServer(index);
-                              setPlayerLoading(true);
-                            }}
-                            className={cn(
-                              "w-full p-3.5 rounded-2xl flex items-center justify-between gap-4 transition-all border text-left outline-none cursor-pointer",
-                              isSelected 
-                                ? "bg-indigo-600/10 border-indigo-500/40 shadow-inner" 
-                                : "bg-white/[0.02] hover:bg-white/[0.05] border-white/[0.03] hover:border-white/[0.08]"
-                            )}
-                          >
-                            <div className={cn("flex flex-col gap-1 min-w-0 flex-1", isRTL ? "text-right items-end" : "text-left items-start")}>
-                              <div className="flex items-center gap-2">
-                                <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", iconBg)}>
-                                  {iconComp}
-                                </div>
-                                <span className="text-white text-xs font-black tracking-wide">
-                                  {isRTL ? server.nameAr : server.name}
-                                </span>
-                                {isSelected && (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_8px_rgba(99,102,241,1)]" />
-                                )}
-                              </div>
-                              <span className={cn(
-                                "text-[10px] truncate block leading-normal w-full",
-                                isSelected ? "text-indigo-200/75" : "text-white/40",
-                                isRTL ? "text-right" : "text-left"
-                              )}>
-                                {filenameStr}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {server.badges?.map((badge, bIdx) => {
-                                // Determine badge style
-                                let badgeStyle = "bg-indigo-600 text-white";
-                                if (badge === 'MULTI') {
-                                  badgeStyle = "bg-fuchsia-600 text-white";
-                                } else if (badge.includes('GB') || badge.includes('MB')) {
-                                  badgeStyle = "bg-indigo-600 font-bold text-white";
-                                } else if (badge === '?') {
-                                  badgeStyle = "bg-zinc-700 text-zinc-300";
-                                } else if (badge === 'OFFLINE') {
-                                  badgeStyle = "bg-teal-600 text-white";
+                <AnimatePresence>
+                  {serversOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 12, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 12, scale: 0.95 }}
+                      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                      className={cn(
+                        "absolute mt-3 z-[300] w-[260px] md:w-[300px]",
+                        isRTL ? "right-0" : "left-0"
+                      )}
+                    >
+                      <div className="w-full bg-[#0d091e]/50 backdrop-blur-xl border border-purple-500/30 rounded-[2rem] p-2 flex flex-col shadow-[0_0_35px_rgba(139,92,246,0.25)] overflow-hidden">
+                        {availableServers.map((server, index) => {
+                          const isSelected = currentServer === index;
+                          return (
+                            <button
+                              key={server.id}
+                              onClick={() => {
+                                setCurrentServer(index);
+                                setPlayerLoading(true);
+                                if (roomId && roomState && roomState.hostId === user?.uid) {
+                                  updateRoomState({ currentServerIndex: index });
                                 }
-                                
-                                return (
-                                  <span
-                                    key={bIdx}
-                                    className={cn(
-                                      "text-[9px] font-black uppercase px-2 py-0.5 rounded-md tracking-wider leading-relaxed shrink-0",
-                                      badgeStyle
-                                    )}
-                                  >
-                                    {badge}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                              }}
+                              className={cn(
+                                "w-full py-4 px-6 text-left transition-all relative font-medium cursor-pointer outline-none select-none flex items-center justify-between group rounded-3xl",
+                                isRTL ? "text-right flex-row-reverse" : "text-left flex-row",
+                                isSelected 
+                                  ? "text-purple-300 drop-shadow-[0_0_10px_rgba(168,85,247,0.5)] font-bold bg-white/[0.03]" 
+                                  : "text-white/80 hover:text-white hover:bg-white/[0.05]"
+                              )}
+                            >
+                              <span className="text-base md:text-lg tracking-wide font-medium">
+                                {isRTL ? `سيرفر ${index + 1}` : `Server ${index + 1}`}
+                              </span>
+                              
+                              {isSelected && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse shadow-[0_0_8px_rgba(168,85,247,1)] shrink-0" />
+                              )}
+
+                              {index < availableServers.length - 1 && (
+                                <div className="absolute bottom-0 left-6 right-6 h-[1px] bg-white/[0.08]" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           )}
 
@@ -879,6 +886,8 @@ export default function Watch() {
           <div 
             ref={playerContainerRef}
             onClick={() => setControlsVisible(prev => !prev)}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={() => setControlsVisible(false)}
             className={cn(
               "relative transition-all duration-300 bg-black flex items-center justify-center overflow-hidden cursor-pointer",
               isPlayerFullscreen 
@@ -886,310 +895,23 @@ export default function Watch() {
                 : "w-full max-w-3xl mx-auto aspect-video rounded-[2.5rem] border border-white/10 ring-1 ring-white/5 shadow-[0_40px_100px_-15px_rgba(0,0,0,0.8)]"
             )}
           >
-            {/* Top and Bottom Cinematic Premium Controls Overlay Skin */}
+            {/* Elegant Floating Exit Button (shown on hover/controls visible) */}
             <AnimatePresence>
-              {(controlsVisible || playerLoading || loading) && !isTrailer && (
-                <>
-                  {/* Modern Dark Gradient Overlay for the entire frame */}
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/60 z-50 pointer-events-none"
-                  />
-
-                  {/* Top Premium Overlay Controls (Pill title in center, Exit in top-right) */}
-                  <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute top-0 left-0 right-0 z-[60] flex items-center justify-between px-6 py-5 bg-transparent pointer-events-none"
-                  >
-                    {/* Left spacer for symmetry */}
-                    <div className="w-12 h-12" />
-
-                    {/* Top Center: Movie Title Pill with glowing border */}
-                    <div className="pointer-events-auto flex items-center bg-black/45 backdrop-blur-xl border border-white/12 rounded-full px-5 py-2 shadow-[0_0_20px_rgba(255,255,255,0.05),0_10px_30px_rgba(0,0,0,0.5)]">
-                      <span className="text-white text-xs md:text-sm font-bold tracking-wider truncate max-w-[200px] md:max-w-xs filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-                        {movieData?.title || movieData?.name}
-                        {season && episode && ` - S${season}E${episode}`}
-                      </span>
-                    </div>
-
-                    {/* Top Right: Large Circular Close Button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleBack();
-                      }}
-                      className="pointer-events-auto w-12 h-12 rounded-full bg-black/45 backdrop-blur-xl border border-white/15 flex items-center justify-center text-white shadow-2xl hover:bg-white/[0.15] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer group"
-                      title={isRTL ? 'خروج' : 'Exit'}
-                    >
-                      <X className="w-5 h-5 text-white filter drop-shadow-[0_0_4px_rgba(255,255,255,0.3)] transition-transform duration-300 group-hover:rotate-90" />
-                    </button>
-                  </motion.div>
-
-                  {/* Bottom Premium Overlay Controls */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute bottom-0 left-0 right-0 z-[60] px-6 pb-6 pt-12 bg-transparent flex flex-col gap-4 pointer-events-none"
-                  >
-                    {/* Sleek Horizontal Progress Bar */}
-                    {movieData && (
-                      <div className="w-[96%] mx-auto flex flex-col gap-2 pointer-events-auto">
-                        <div 
-                          onClick={handleProgressBarClick}
-                          className="group relative h-1.5 w-full bg-white/10 rounded-full cursor-pointer transition-all duration-200 hover:h-2"
-                        >
-                          {/* Active track */}
-                          <div 
-                            className="absolute left-0 top-0 bottom-0 bg-white rounded-full transition-all duration-100"
-                            style={{ width: `${Math.min(100, Math.max(0, (playerTime / ((movieData?.runtime || 120) * 60)) * 100))}%` }}
-                          />
-                          {/* Circular white scrubber */}
-                          <div 
-                            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white border border-white/50 shadow-[0_0_10px_rgba(0,0,0,0.8)] scale-100 group-hover:scale-125 transition-transform duration-200 -ml-2"
-                            style={{ left: `${Math.min(100, Math.max(0, (playerTime / ((movieData?.runtime || 120) * 60)) * 100))}%` }}
-                          />
-                        </div>
-
-                        {/* Timestamp values */}
-                        <div className="flex items-center justify-between px-1 text-[10px] font-bold text-white/50 tracking-wider font-mono">
-                          <span>{formatPlayerTime(playerTime)}</span>
-                          <span>-{formatPlayerTime(Math.max(0, ((movieData?.runtime || 120) * 60) - playerTime))}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Three Floating Control Groups */}
-                    <div className="w-[96%] mx-auto flex items-center justify-between pointer-events-none">
-                      {/* Left group capsule: Media Actions */}
-                      <div className="pointer-events-auto inline-flex items-center gap-3.5 px-5 py-2.5 bg-black/45 backdrop-blur-xl border border-white/10 rounded-full shadow-2xl hover:bg-black/60 transition-all duration-300">
-                        {/* Rewind 10s */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const newTime = Math.max(0, playerTime - 10);
-                            setPlayerTime(newTime);
-                            iframeTimeRef.current = newTime;
-                            showToast(isRTL ? "رجوع 10 ثوانٍ" : "Rewind 10s", "info");
-                          }}
-                          className="p-1.5 hover:text-white text-white/70 hover:scale-110 active:scale-95 transition-all cursor-pointer"
-                          title="-10s"
-                        >
-                          <RotateCcw className="w-5 h-5 text-white" />
-                        </button>
-
-                        {/* Large Pause/Play Button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsPlaying(!isPlaying);
-                            showToast(isPlaying ? (isRTL ? "تم الإيقاف المؤقت" : "Paused") : (isRTL ? "تم التشغيل" : "Playing"), "info");
-                          }}
-                          className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-all cursor-pointer"
-                          title={isPlaying ? "Pause" : "Play"}
-                        >
-                          {isPlaying ? (
-                            <Pause className="w-4 h-4 fill-current text-black" />
-                          ) : (
-                            <Play className="w-4 h-4 fill-current text-black ml-0.5" />
-                          )}
-                        </button>
-
-                        {/* Forward 10s */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const totalDuration = (movieData?.runtime || 120) * 60;
-                            const newTime = Math.min(totalDuration, playerTime + 10);
-                            setPlayerTime(newTime);
-                            iframeTimeRef.current = newTime;
-                            showToast(isRTL ? "تقدم 10 ثوانٍ" : "Forward 10s", "info");
-                          }}
-                          className="p-1.5 hover:text-white text-white/70 hover:scale-110 active:scale-95 transition-all cursor-pointer"
-                          title="+10s"
-                        >
-                          <RotateCw className="w-5 h-5 text-white" />
-                        </button>
-                      </div>
-
-                      {/* Center group capsule: Settings button */}
-                      <div className="pointer-events-auto relative">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowServerSelect(!showServerSelect);
-                            setShowQualityDropdown(false);
-                            setShowSubtitleSelect(false);
-                          }}
-                          className="w-11 h-11 rounded-full bg-black/45 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white/80 hover:text-white shadow-2xl hover:bg-black/60 hover:scale-110 hover:rotate-45 active:scale-95 transition-all duration-300 cursor-pointer"
-                          title={isRTL ? "الخادُم وسيرفرات البث" : "Settings / Servers"}
-                        >
-                          <Settings className="w-5 h-5" />
-                        </button>
-
-                        <AnimatePresence>
-                          {showServerSelect && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                              className="absolute bottom-14 left-1/2 -translate-x-1/2 w-52 bg-black/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 shadow-2xl z-[70] origin-bottom text-left"
-                            >
-                              <div className="text-[9px] uppercase font-black tracking-widest text-white/40 px-3 py-1.5 mb-1.5 border-b border-white/5">
-                                {isRTL ? "سيرفر البث" : "Streaming Server"}
-                              </div>
-                              <div className="flex flex-col gap-1">
-                                {availableServers.map((server, idx) => (
-                                  <button
-                                    key={server.id}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setCurrentServer(idx);
-                                      setPlayerLoading(true);
-                                      setShowServerSelect(false);
-                                      showToast(isRTL ? `سيرفر التشغيل ${idx + 1}` : `Switched to Server ${idx + 1}`, "success");
-                                    }}
-                                    className={cn(
-                                      "w-full px-3 py-2 rounded-xl text-[10px] font-bold text-left transition-all duration-200 cursor-pointer flex items-center justify-between",
-                                      currentServer === idx
-                                        ? "bg-white/10 text-white"
-                                        : "text-white/50 hover:text-white hover:bg-white/5"
-                                    )}
-                                  >
-                                    <span>Server {idx + 1}</span>
-                                    <span className="text-[8px] bg-white/10 text-white/40 px-1.5 py-0.5 rounded uppercase">
-                                      {server.id}
-                                    </span>
-                                  </button>
-                                ))}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-
-                      {/* Right group capsule: Subtitle, Quality Indicator, Fullscreen */}
-                      <div className="pointer-events-auto inline-flex items-center gap-2 px-3.5 py-1.5 bg-black/45 backdrop-blur-xl border border-white/10 rounded-full shadow-2xl hover:bg-black/60 transition-all duration-300 relative">
-                        {/* Subtitle button */}
-                        <div className="relative">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowSubtitleSelect(!showSubtitleSelect);
-                              setShowQualityDropdown(false);
-                              setShowServerSelect(false);
-                            }}
-                            className={cn(
-                              "p-2 rounded-lg transition-all cursor-pointer hover:scale-105 active:scale-95",
-                              activeSubtitle !== 'Off' ? "text-white text-shadow-glow" : "text-white/60 hover:text-white"
-                            )}
-                            title={isRTL ? "الترجمة" : "Subtitles"}
-                          >
-                            <FileText className="w-5 h-5" />
-                          </button>
-
-                          <AnimatePresence>
-                            {showSubtitleSelect && (
-                              <motion.div
-                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                className="absolute bottom-12 right-0 w-36 bg-black/95 backdrop-blur-2xl border border-white/10 rounded-xl p-1 shadow-2xl z-[70] origin-bottom-right"
-                              >
-                                {['Off', 'Arabic', 'English', 'French'].map((sub) => (
-                                  <button
-                                    key={sub}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveSubtitle(sub);
-                                      setShowSubtitleSelect(false);
-                                      showToast(isRTL ? `تم تعيين الترجمة: ${sub}` : `Subtitle set: ${sub}`, "info");
-                                    }}
-                                    className={cn(
-                                      "w-full px-3 py-1.5 rounded-lg text-[9px] font-bold text-left transition-all duration-200 cursor-pointer flex items-center justify-between",
-                                      activeSubtitle === sub ? "bg-white/10 text-white" : "text-white/50 hover:text-white hover:bg-white/5"
-                                    )}
-                                  >
-                                    <span>{sub}</span>
-                                    {activeSubtitle === sub && <span className="w-1.5 h-1.5 bg-white rounded-full" />}
-                                  </button>
-                                ))}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-
-                        {/* Quality indicator element (360p, 720p, 1080p, 4K) */}
-                        <div className="relative">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowQualityDropdown(!showQualityDropdown);
-                              setShowSubtitleSelect(false);
-                              setShowServerSelect(false);
-                            }}
-                            className="text-[10px] font-black tracking-wider text-white/80 hover:text-white bg-white/10 hover:bg-white/15 px-3 py-1.5 rounded-full border border-white/5 transition-all uppercase cursor-pointer"
-                            title={isRTL ? "الجودة" : "Quality"}
-                          >
-                            {currentQuality.replace('p', '')}
-                          </button>
-
-                          <AnimatePresence>
-                            {showQualityDropdown && (
-                              <motion.div
-                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                className="absolute bottom-12 right-0 w-32 bg-black/95 backdrop-blur-2xl border border-white/10 rounded-xl p-1 shadow-2xl z-[70] origin-bottom-right"
-                              >
-                                {['360p', '720p', '1080p', '4K'].map((qual) => (
-                                  <button
-                                    key={qual}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setCurrentQuality(qual);
-                                      setShowQualityDropdown(false);
-                                      showToast(isRTL ? `تم تفعيل جودة ${qual}` : `Quality set to ${qual}`, "info");
-                                    }}
-                                    className={cn(
-                                      "w-full px-3 py-1.5 rounded-lg text-[9px] font-bold text-left transition-all duration-200 cursor-pointer flex items-center justify-between",
-                                      currentQuality === qual ? "bg-white/10 text-white" : "text-white/50 hover:text-white hover:bg-white/5"
-                                    )}
-                                  >
-                                    <span>{qual}</span>
-                                    {currentQuality === qual && <span className="w-1.5 h-1.5 bg-white rounded-full" />}
-                                  </button>
-                                ))}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-
-                        {/* Fullscreen icon */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            togglePlayerFullscreen();
-                          }}
-                          className="p-2 text-white/60 hover:text-white hover:scale-110 active:scale-95 transition-all cursor-pointer"
-                          title={isRTL ? "كامل الشاشة" : "Toggle Fullscreen"}
-                        >
-                          {isPlayerFullscreen ? (
-                            <Minimize className="w-5 h-5 text-white" />
-                          ) : (
-                            <Maximize className="w-5 h-5 text-white" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                </>
+              {controlsVisible && !isTrailer && (
+                <motion.button
+                  key="floating-close-btn"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleBack();
+                  }}
+                  className="absolute top-4 right-4 z-40 w-10 h-10 rounded-full bg-black/60 hover:bg-black/85 border border-white/10 flex items-center justify-center text-white/90 hover:text-white shadow-lg backdrop-blur-md transition-all active:scale-95 cursor-pointer"
+                  title={isRTL ? 'خروج' : 'Exit'}
+                >
+                  <X className="w-4 h-4" />
+                </motion.button>
               )}
             </AnimatePresence>
 

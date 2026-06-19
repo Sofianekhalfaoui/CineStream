@@ -3,6 +3,8 @@ import axios from 'axios';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Movie } from '../types';
 import MovieCard from './MovieCard';
+import { useSettings } from '../context/SettingsContext';
+import { filterAdultContent } from '../services/tmdb';
 
 interface ExtendedMovieRowProps {
   title: string;
@@ -15,12 +17,16 @@ interface ExtendedMovieRowProps {
 export default function MovieRow({ title, fetchUrl, isLargeRow, isTop10, headerRight }: ExtendedMovieRowProps) {
   const [movies, setMovies] = useState<Movie[]>([]);
   const rowRef = useRef<HTMLDivElement>(null);
+  const { settings } = useSettings();
 
   useEffect(() => {
     async function fetchData() {
       try {
         const request = await axios.get(fetchUrl);
-        const results = request.data.results || [];
+        const rawResults = request.data.results || [];
+        
+        // Filter out adult/pornographic titles if contentFilter is enabled
+        const results = filterAdultContent(rawResults, settings.contentFilter);
         
         // Shuffle/mix results if NOT top 10 AND NOT a trending row
         const shouldShuffle = !isTop10 && !fetchUrl.includes('/trending/');
@@ -40,7 +46,7 @@ export default function MovieRow({ title, fetchUrl, isLargeRow, isTop10, headerR
       }
     }
     fetchData();
-  }, [fetchUrl, title, isTop10]);
+  }, [fetchUrl, title, isTop10, settings.contentFilter]);
 
   const scroll = (direction: 'left' | 'right') => {
     if (rowRef.current) {

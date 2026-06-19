@@ -5,6 +5,7 @@ import { useToast } from './ToastContext';
 import { useLanguage } from './LanguageContext';
 import { db } from '../lib/firebase';
 import { collection, doc, onSnapshot, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { handleFirestoreError, OperationType } from '../lib/firestoreUtils';
 
 interface FavoritesContextType {
   favorites: Movie[];
@@ -41,6 +42,8 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
         ...doc.data()
       })) as Movie[];
       setFavorites(remoteFavs);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `users/${user.uid}/favorites`);
     });
 
     return () => unsubscribe();
@@ -94,7 +97,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
         );
       }
     } catch (error) {
-      console.error("Error toggling favorite in Firestore:", error);
+      handleFirestoreError(error, exists ? OperationType.DELETE : OperationType.WRITE, `users/${user.uid}/favorites/${movie.id}`);
     }
   };
 

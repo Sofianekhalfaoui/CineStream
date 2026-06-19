@@ -21,7 +21,8 @@ import {
   PlayCircle,
   FolderOpen,
   Languages,
-  FileText
+  FileText,
+  ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../context/LanguageContext';
@@ -100,6 +101,18 @@ export default function CustomVideoPlayer({ title, poster, onEnded, onLoaded, de
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const [videoUrl, setVideoUrl] = useState<string>(defaultVideoUrl || '');
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (defaultVideoUrl) {
+      setVideoUrl(defaultVideoUrl);
+    }
+    setPlaybackError(null);
+  }, [defaultVideoUrl]);
+
+  useEffect(() => {
+    setPlaybackError(null);
+  }, [videoUrl]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -131,7 +144,7 @@ export default function CustomVideoPlayer({ title, poster, onEnded, onLoaded, de
       videoRef.current.play()
         .then(() => setIsPlaying(true))
         .catch(err => {
-          console.error("Autoplay/play failed:", err);
+          console.error("Autoplay/play failed:", err?.message || String(err));
           showToast(isAr ? 'عذراً، فشل تشغيل الفيديو' : 'Error starting playback', 'error');
         });
     }
@@ -542,7 +555,7 @@ export default function CustomVideoPlayer({ title, poster, onEnded, onLoaded, de
       `}</style>
 
       {/* 2. REAL HTML5 VIDEO COMPONENT */}
-      {videoUrl && (
+      {videoUrl && !playbackError && (
         <video
           id="custom-video-ref"
           ref={videoRef}
@@ -552,6 +565,20 @@ export default function CustomVideoPlayer({ title, poster, onEnded, onLoaded, de
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
           onEnded={handleEnded}
+          onError={() => {
+            console.error("Video element playback failed loading source media");
+            const errorObj = videoRef.current?.error;
+            let msg = isAr 
+              ? 'عذراً، نوع البث هذا غير مدعوم في متصفحك أو تم حجب الاتصال المباشر بالسيرفر.' 
+              : 'Apologies, this stream format is either unsupported by your browser or the direct server connection was blocked.';
+            if (errorObj) {
+              if (errorObj.code === 1) msg += ' (MEDIA_ERR_ABORTED)';
+              else if (errorObj.code === 2) msg += ' (MEDIA_ERR_NETWORK)';
+              else if (errorObj.code === 3) msg += ' (MEDIA_ERR_DECODE)';
+              else if (errorObj.code === 4) msg += ' (MEDIA_ERR_SRC_NOT_SUPPORTED)';
+            }
+            setPlaybackError(msg);
+          }}
           playsInline
           autoPlay
           className="w-full h-full object-contain bg-black cursor-pointer"
@@ -567,6 +594,59 @@ export default function CustomVideoPlayer({ title, poster, onEnded, onLoaded, de
             />
           ))}
         </video>
+      )}
+
+      {/* PLAYBACK ERROR OVERLAY */}
+      {videoUrl && playbackError && (
+        <div className="absolute inset-0 z-40 bg-[#070b19] flex flex-col items-center justify-center p-6 text-center">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.15)_0%,transparent_75%)] pointer-events-none" />
+          
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="space-y-6 max-w-sm relative z-10"
+          >
+            <div className="mx-auto w-16 h-16 bg-red-500/15 rounded-3xl border border-red-500/30 flex items-center justify-center text-red-500 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+              <Sparkles className="w-8 h-8 rotate-45" />
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-black text-red-400 uppercase tracking-widest">
+                {isAr ? 'خطأ في تشغيل السيرفر المباشر' : 'Live Stream Incompatible'}
+              </h3>
+              <p className="text-[11px] text-white/70 leading-relaxed">
+                {playbackError}
+              </p>
+              <p className="text-[10px] text-white/40 leading-relaxed">
+                {isAr 
+                  ? 'يرجى مراجعة اختيار سيرفر آخر من القائمة أو تشغيل البث في علامة تبويب خارجية للتغلب على قيود المتصفح.' 
+                  : 'We recommend switching to an alternative server, or opening the stream directly in an external tab to bypass browser restrictions.'}
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2 justify-center">
+              <a
+                href={videoUrl}
+                target="_blank"
+                referrerPolicy="no-referrer"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 transform hover:scale-[1.03]"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>{isAr ? 'البدء في نافذة خارجية ↗' : 'Play External Tab ↗'}</span>
+              </a>
+
+              <button 
+                onClick={() => {
+                  setPlaybackError(null);
+                }}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider transition-all duration-300"
+              >
+                {isAr ? 'المحاولة مجدداً' : 'Retry'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
 
       {/* 3. PREMIUM HUD INTERACTIVE CONTROLS */}

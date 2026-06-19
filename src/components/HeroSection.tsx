@@ -3,12 +3,13 @@ import { Play, Heart, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { getImageUrl, fetchMovieVideos, getTmdbLanguage, fetchMovieImages } from '../services/tmdb';
+import { getImageUrl, fetchMovieVideos, getTmdbLanguage, fetchMovieImages, filterAdultContent } from '../services/tmdb';
 import { Movie } from '../types';
 import { useMovie } from '../context/MovieContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSubscription } from '../context/SubscriptionContext';
+import { useSettings } from '../context/SettingsContext';
 import { cn } from '../lib/utils';
 import TrailerVideoPlayer from './TrailerVideoPlayer';
 
@@ -88,11 +89,13 @@ export default function HeroSection({ fetchUrl, type }: HeroSectionProps) {
   const { toggleFavorite, isFavorite } = useFavorites();
   const { t, language } = useLanguage();
   const { isSubscriptionOpen, openSubscription } = useSubscription();
+  const { settings } = useSettings();
   const location = useLocation();
 
   // Dynamic trailer playback state
   const [trailerKey, setTrailerKey] = useState<string | null>(null);
   const [showVideo, setShowVideo] = useState(false);
+  const [startTrailer, setStartTrailer] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [isLoadingTrailer, setIsLoadingTrailer] = useState(false);
 
@@ -107,14 +110,16 @@ export default function HeroSection({ fetchUrl, type }: HeroSectionProps) {
     async function fetchData() {
       try {
         const request = await axios.get(fetchUrl);
-        const results = (request.data?.results || []).slice(0, 10);
+        const rawResults = request.data?.results || [];
+        const filteredResults = filterAdultContent(rawResults, settings.contentFilter);
+        const results = filteredResults.slice(0, 10);
         setMovies(results);
       } catch (err) {
         console.error('Error fetching hero section movies:', err);
       }
     }
     fetchData();
-  }, [fetchUrl]);
+  }, [fetchUrl, settings.contentFilter]);
 
   // Parallel background fetching for all movie/series vector branding logos
   useEffect(() => {
@@ -167,6 +172,7 @@ export default function HeroSection({ fetchUrl, type }: HeroSectionProps) {
     // Reset states for the new active item
     setTrailerKey(null);
     setShowVideo(false);
+    setStartTrailer(false);
     setIsLoadingTrailer(true);
 
     const activeType = type || activeMovie.media_type || (activeMovie.name ? 'tv' : 'movie');
@@ -206,16 +212,24 @@ export default function HeroSection({ fetchUrl, type }: HeroSectionProps) {
 
     loadTrailer();
 
-    // Show image poster for exactly 4 seconds first
-    const displayTimer = setTimeout(() => {
+    // Start video advertisement/trailer in background after 3 seconds (3000ms)
+    const startTrailerTimer = setTimeout(() => {
+      if (isSubscribed) {
+        setStartTrailer(true);
+      }
+    }, 3000);
+
+    // Fade out poster image with smooth motion style after 5 seconds (5000ms) to reveal video already in play
+    const fadePosterTimer = setTimeout(() => {
       if (isSubscribed) {
         setShowVideo(true);
       }
-    }, 4000);
+    }, 5000);
 
     return () => {
       isSubscribed = false;
-      clearTimeout(displayTimer);
+      clearTimeout(startTrailerTimer);
+      clearTimeout(fadePosterTimer);
     };
   }, [currentIndex, movies, type, language]);
 
@@ -239,7 +253,7 @@ export default function HeroSection({ fetchUrl, type }: HeroSectionProps) {
 
   const activeMovie = movies[currentIndex];
 
-  const handleDragEnd = (_: any, info: any) => {
+  const handlePanEnd = (_: any, info: any) => {
     const swipeThreshold = 50;
     if (info.offset.x > swipeThreshold) {
       // Swipe Right -> Previous
@@ -260,17 +274,28 @@ export default function HeroSection({ fetchUrl, type }: HeroSectionProps) {
   return (
     <motion.header 
       id="hero-header-banner"
-      className="relative h-[72vh] w-full overflow-hidden bg-black touch-none cursor-grab active:cursor-grabbing"
-      drag="x"
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.1}
-      onDragEnd={handleDragEnd}
+      className="relative h-[72vh] w-full overflow-hidden bg-white dark:bg-[#070b19] touch-pan-y select-none"
+      onPanEnd={handlePanEnd}
     >
       {/* Background Media Container */}
-      <div id="hero-background-media" className="absolute inset-0 z-0 bg-black">
-        {/* Backdrop Image - display while loading / waiting 3s or fallback */}
-        <AnimatePresence mode="wait">
-          {!showVideo || !trailerKey || !shouldPlayTrailer ? (
+      <div id="hero-background-media" className="absolute inset-0 z-0 bg-white dark:bg-[#070b19]">
+        {/* Render the trailer after 3 seconds (startTrailer is true) so it plays/buffers in the background */}
+        {trailerKey && shouldPlayTrailer && startTrailer && (
+          <div id={`hero-trailer-wrapper-${activeMovie.id}`} className="absolute inset-0 w-full h-full z-0">
+            <TrailerVideoPlayer
+              videoKey={trailerKey}
+              isMuted={isMuted}
+              onEnded={() => {
+                // Advance to the next video as requested once trailer ends
+                setCurrentIndex((prev) => (prev + 1) % movies.length);
+              }}
+            />
+          </div>
+        )}
+        
+        {/* Backdrop Image - displayed on top (z-10), fades out when showVideo is true to expose the running trailer */}
+        <AnimatePresence>
+          {(!showVideo || !trailerKey || !shouldPlayTrailer) && (
             <motion.img
               id={`hero-backdrop-img-${activeMovie.id}`}
               key={`img-${activeMovie.id}`}
@@ -280,32 +305,13 @@ export default function HeroSection({ fetchUrl, type }: HeroSectionProps) {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
               transition={{ duration: 1, ease: "easeInOut" }}
-              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10"
             />
-          ) : (
-            <motion.div
-              id={`hero-trailer-wrapper-${activeMovie.id}`}
-              key={`video-${activeMovie.id}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 1 }}
-              className="absolute inset-0 w-full h-full"
-            >
-              <TrailerVideoPlayer
-                videoKey={trailerKey}
-                isMuted={isMuted}
-                onEnded={() => {
-                  // Advance to the next video as requested once trailer ends
-                  setCurrentIndex((prev) => (prev + 1) % movies.length);
-                }}
-              />
-            </motion.div>
           )}
         </AnimatePresence>
 
         {/* Overlays */}
-        <div id="hero-overlay-gradient" className="absolute inset-0 hero-gradient z-10 pointer-events-none" />
+        <div id="hero-overlay-gradient" className="absolute inset-0 hero-gradient z-20 pointer-events-none" />
       </div>
 
       {/* Content Center Aligned */}
@@ -406,7 +412,7 @@ export default function HeroSection({ fetchUrl, type }: HeroSectionProps) {
             </div>
 
             {/* Slider Dots Centered */}
-            <div className="flex items-center gap-1.5 mb-4 md:mb-8 pointer-events-auto">
+            <div className="flex items-center gap-1.5 mb-2 md:mb-4 pointer-events-auto">
               {movies.map((_, idx) => (
                 <button
                   key={idx}
@@ -414,27 +420,10 @@ export default function HeroSection({ fetchUrl, type }: HeroSectionProps) {
                     e.stopPropagation();
                     setCurrentIndex(idx);
                   }}
-                  className={`transition-all duration-700 ${idx === currentIndex ? 'w-8 bg-primary shadow-[0_0_15px_rgba(220,38,38,0.8)]' : 'w-2 bg-white/20'} h-1 rounded-full`}
+                  className={`transition-all duration-700 ${idx === currentIndex ? 'w-8 bg-primary shadow-[0_0_8px_var(--primary-color)]' : 'w-2 bg-white/20'} h-1 rounded-full`}
                 />
               ))}
             </div>
-
-            {/* Movie Box Pro Badge */}
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1 }}
-              className="px-4 py-1.5 pointer-events-auto"
-              onClick={(e) => {
-                e.stopPropagation();
-                openSubscription();
-              }}
-            >
-              <div className="flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full cursor-pointer hover:bg-white/10 transition-colors group">
-                <span className="bg-primary px-2 py-0.5 rounded text-[10px] font-black text-white italic">CINESTREAM PRO</span>
-                <span className="text-gray-400 text-[11px] font-bold group-hover:text-white transition-colors">{t('moreInfo')} &gt;</span>
-              </div>
-            </motion.div>
           </div>
         </motion.div>
       </div>

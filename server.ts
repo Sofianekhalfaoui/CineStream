@@ -1,13 +1,9 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
-import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
@@ -237,6 +233,257 @@ async function startServer() {
       queryUsed,
       domainUsed
     });
+  });
+
+  // --- ELKING SERVERS (XTREAM IPTV & VOD CONTROLLER) ---
+  let elkingVodCache: any[] | null = null;
+  let lastElkingVodFetch = 0;
+
+  let elkingSeriesCache: any[] | null = null;
+  let lastElkingSeriesFetch = 0;
+
+  const elkingSeriesInfoCache = new Map<string, { data: any; timestamp: number }>();
+
+  function normalizeText(text: string): string {
+    if (!text) return "";
+    let clean = text.toLowerCase();
+    
+    // Normalize Arabic letters & characters to facilitate unified matches
+    clean = clean.replace(/[أإآ]/g, "ا");
+    clean = clean.replace(/ة/g, "ه");
+    clean = clean.replace(/ى/g, "ي");
+    clean = clean.replace(/[ًٌٍَُِّْ]/g, ""); // strip accents/diacritics
+    
+    // Remove symbols/marks, collapse white space
+    clean = clean.replace(/[^a-z0-9ا-ي\s]/g, "");
+    clean = clean.replace(/\s+/g, " ");
+    return clean.trim();
+  }
+
+  function findBestElkingMatch(items: any[], queryText: string, targetYear?: string) {
+    if (!items || items.length === 0) return null;
+    const target = normalizeText(queryText);
+    const yearStr = targetYear ? String(targetYear) : "";
+
+    let bestItem: any = null;
+    let maxScore = -1;
+
+    for (const item of items) {
+      if (!item.name) continue;
+      const itemNameClean = normalizeText(item.name);
+      
+      // Fuzzy contains/overlap containment check
+      if (itemNameClean.includes(target) || target.includes(itemNameClean)) {
+        let score = 10;
+        
+        // Match exact characters perfectly
+        if (itemNameClean === target) {
+          score += 50;
+        }
+        
+        // Prioritize releases of matching year
+        if (yearStr && item.name.includes(yearStr)) {
+          score += 30;
+        }
+        
+        if (score > maxScore) {
+          maxScore = score;
+          bestItem = item;
+        }
+      }
+    }
+    
+    return bestItem;
+  }
+
+  app.get("/api/elking/search", async (req, res) => {
+    const { title, titleAr, year, mediaType, season, episode } = req.query as {
+      title?: string;
+      titleAr?: string;
+      year?: string;
+      mediaType?: string;
+      season?: string;
+      episode?: string;
+    };
+
+    if (!title && !titleAr) {
+      return res.status(400).json({ error: "Title parameter is required" });
+    }
+
+    const host = "http://vod4k.cc";
+    const username = "3143771383105485";
+    const password = "5846751342";
+    const cacheTTL = 10 * 60 * 1000; // 10 minutes cache TTL
+
+    try {
+      if (mediaType === "tv" && season && episode) {
+        // --- TV SHOW / SERIES PIPELINE ---
+        const now = Date.now();
+        if (!elkingSeriesCache || (now - lastElkingSeriesFetch > cacheTTL)) {
+          console.log("Fetching new Series list from ELKING...");
+          const listRes = await fetch(`${host}/player_api.php?username=${username}&password=${password}&action=get_series`);
+          if (listRes.ok) {
+            elkingSeriesCache = await listRes.json();
+            lastElkingSeriesFetch = now;
+          }
+        }
+
+        if (!elkingSeriesCache || elkingSeriesCache.length === 0) {
+          return res.status(404).json({ error: "No Series catalog available on ELKING" });
+        }
+
+        let matchedSeries = findBestElkingMatch(elkingSeriesCache, title || "", year);
+        if (!matchedSeries && titleAr) {
+          matchedSeries = findBestElkingMatch(elkingSeriesCache, titleAr, year);
+        }
+
+        if (!matchedSeries) {
+          return res.status(404).json({ error: "Series not found on ELKING" });
+        }
+
+        const seriesId = String(matchedSeries.series_id);
+        
+        // Fetch specific metadata and episodes map
+        let seriesInfo = elkingSeriesInfoCache.get(seriesId);
+        if (!seriesInfo || (now - seriesInfo.timestamp > cacheTTL)) {
+          const infoRes = await fetch(`${host}/player_api.php?username=${username}&password=${password}&action=get_series_info&series_id=${seriesId}`);
+          if (infoRes.ok) {
+            const data = await infoRes.json();
+            seriesInfo = { data, timestamp: now };
+            elkingSeriesInfoCache.set(seriesId, seriesInfo);
+          }
+        }
+
+        if (!seriesInfo || !seriesInfo.data || !seriesInfo.data.episodes) {
+          return res.status(404).json({ error: "Episodes map missing on ELKING indexer" });
+        }
+
+        const seasonsMap = seriesInfo.data.episodes;
+        let matchedEpisode: any = null;
+        
+        const seasonKey = String(season);
+        const seasonEpisodes = seasonsMap[seasonKey] || seasonsMap[season];
+        
+        if (seasonEpisodes && Array.isArray(seasonEpisodes)) {
+          matchedEpisode = seasonEpisodes.find((ep: any) => ep.episode_num === parseInt(episode) || String(ep.episode_num) === episode);
+        }
+
+        if (!matchedEpisode) {
+          // Fallback searching across all indices
+          for (const sKey of Object.keys(seasonsMap)) {
+            const epList = seasonsMap[sKey];
+            if (Array.isArray(epList)) {
+              matchedEpisode = epList.find((ep: any) => 
+                (ep.episode_num === parseInt(episode) || String(ep.episode_num) === episode) &&
+                String(ep.season) === seasonKey
+              );
+              if (matchedEpisode) break;
+            }
+          }
+        }
+
+        if (!matchedEpisode) {
+          return res.status(404).json({ error: `Episode S${season}E${episode} not indexed on ELKING` });
+        }
+
+        const streamId = matchedEpisode.id;
+        const extension = matchedEpisode.container_extension || "mp4";
+        const proxyUrl = `/api/elking/stream/series/${streamId}/${extension}`;
+        const directUrl = `${host}/series/${username}/${password}/${streamId}.${extension}`;
+
+        return res.json({
+          success: true,
+          streamId,
+          extension,
+          proxyUrl,
+          directUrl,
+          title: matchedEpisode.title || `${matchedSeries.name} - S${season}E${episode}`
+        });
+
+      } else {
+        // --- MOVIE / VOD PIPELINE ---
+        const now = Date.now();
+        if (!elkingVodCache || (now - lastElkingVodFetch > cacheTTL)) {
+          console.log("Fetching new Movies list from ELKING...");
+          const listRes = await fetch(`${host}/player_api.php?username=${username}&password=${password}&action=get_vod_streams`);
+          if (listRes.ok) {
+            elkingVodCache = await listRes.json();
+            lastElkingVodFetch = now;
+          }
+        }
+
+        if (!elkingVodCache || elkingVodCache.length === 0) {
+          return res.status(404).json({ error: "No Movie catalog available on ELKING" });
+        }
+
+        let matchedMovie = findBestElkingMatch(elkingVodCache, title || "", year);
+        if (!matchedMovie && titleAr) {
+          matchedMovie = findBestElkingMatch(elkingVodCache, titleAr, year);
+        }
+
+        if (!matchedMovie) {
+          return res.status(404).json({ error: "Movie not found on ELKING" });
+        }
+
+        const streamId = matchedMovie.stream_id;
+        const extension = matchedMovie.container_extension || "mp4";
+        const proxyUrl = `/api/elking/stream/movie/${streamId}/${extension}`;
+        const directUrl = `${host}/movie/${username}/${password}/${streamId}.${extension}`;
+
+        return res.json({
+          success: true,
+          streamId,
+          extension,
+          proxyUrl,
+          directUrl,
+          title: matchedMovie.name
+        });
+      }
+    } catch (error: any) {
+      console.error("ELKING Search error:", error);
+      res.status(500).json({ error: error.message || "Failed to search content on ELKING server" });
+    }
+  });
+
+  app.get("/api/elking/stream/:streamType/:streamId/:extension", async (req, res) => {
+    const { streamType, streamId, extension } = req.params;
+    const username = "3143771383105485";
+    const password = "5846751342";
+    const remoteUrl = `http://vod4k.cc/${streamType}/${username}/${password}/${streamId}.${extension}`;
+
+    const headers: Record<string, string> = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+    };
+
+    if (req.headers.range) {
+      headers['range'] = req.headers.range;
+    }
+
+    try {
+      const response = await fetch(remoteUrl, { headers });
+      
+      res.status(response.status);
+      
+      response.headers.forEach((value, name) => {
+        const lowerName = name.toLowerCase();
+        if (['content-type', 'content-length', 'content-range', 'accept-ranges', 'content-disposition'].includes(lowerName)) {
+          res.setHeader(name, value);
+        }
+      });
+
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+
+      if (response.body) {
+        const { Readable } = await import("stream");
+        Readable.fromWeb(response.body as any).pipe(res);
+      } else {
+        res.end();
+      }
+    } catch (error: any) {
+      console.error(`Error piping stream (falling back to redirect): ${error.message}`);
+      res.redirect(remoteUrl);
+    }
   });
 
   // Vite middleware for development

@@ -2,5 +2,5 @@
   "name": "FalakPlay",
   "description": "A premium, cinematic movie streaming interface with AI-powered recommendations using Gemini. Features auto-playing trailers, dynamic background overlays, and a sophisticated dark UI.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["TMDB Integration", "AI Search (Gemini)", "Dynamic Video Backgrounds", "Smooth Animations"]
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API", "TMDB Integration", "AI Search (Gemini)", "Dynamic Video Backgrounds", "Smooth Animations"]
 }

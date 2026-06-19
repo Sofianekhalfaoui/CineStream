@@ -43,6 +43,7 @@
         "currentTime": { "type": "number", "description": "Current playback time in seconds" },
         "isPlaying": { "type": "boolean", "description": "Whether the media is currently playing" },
         "participants": { "type": "array", "description": "List of participant UIDs" },
+        "currentServerIndex": { "type": "number", "description": "Index of selected media source server" },
         "lastUpdated": { "type": "number", "description": "Timestamp of last update" }
       },
       "required": ["hostId", "mediaId", "mediaType", "participants", "lastUpdated"]

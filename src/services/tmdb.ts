@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import axios from 'axios';
+import { Movie } from '../types';
 
 const api_key = import.meta.env.VITE_TMDB_API_KEY;
 const isV4Token = api_key && api_key.length > 50;
@@ -22,6 +23,15 @@ export const getTmdbLanguage = (lang: string) => {
   switch (lang) {
     case 'ar': return 'ar-SA';
     case 'fr': return 'fr-FR';
+    case 'es': return 'es-ES';
+    case 'de': return 'de-DE';
+    case 'tr': return 'tr-TR';
+    case 'ru': return 'ru-RU';
+    case 'it': return 'it-IT';
+    case 'pt': return 'pt-PT';
+    case 'zh': return 'zh-CN';
+    case 'ja': return 'ja-JP';
+    case 'ko': return 'ko-KR';
     default: return 'en-US';
   }
 };
@@ -59,6 +69,29 @@ export const getRequests = (lang: string = 'ar-SA', contentFilter: boolean = tru
 export const getImageUrl = (path: string | null, size: 'original' | 'w500' = 'original') => {
   if (!path) return 'https://via.placeholder.com/1920x1080?text=No+Image';
   return `https://image.tmdb.org/t/p/${size}${path}`;
+};
+
+export const filterAdultContent = (movies: Movie[], contentFilter: boolean): Movie[] => {
+  if (!contentFilter || !movies) return movies || [];
+  
+  const sensitiveKeywords = [
+    'sexy', 'porn', 'erotic', 'erotica', 'nsfw', 'xxx', 'sexo', 'sexual', 'sensual', 'escort', 'orgasm', 'nude', 'adult',
+    'إباحي', 'إباحية', 'جنسي', 'جنسية', 'خليع', 'خليعة', 'سهرة حمراء', 'للكبار فقط', 'بورنو', 'بورن', 'سهرات جنسية',
+    'érotique', 'porno', 'libertin'
+  ];
+
+  return movies.filter(movie => {
+    if (!movie) return false;
+    if (movie.adult === true) return false;
+    
+    const titleStr = `${movie.title || ''} ${movie.name || ''} ${movie.overview || ''}`.toLowerCase();
+    
+    const hasSensitiveKeyword = sensitiveKeywords.some(keyword => 
+      titleStr.includes(keyword)
+    );
+    
+    return !hasSensitiveKeyword;
+  });
 };
 
 export const fetchMovieDetails = async (id: number, type: 'movie' | 'tv', lang: string = 'ar-SA') => {
@@ -102,9 +135,9 @@ export const fetchMovieVideos = async (movieId: number, mediaType: 'movie' | 'tv
   }
 };
 
-export const searchMovies = async (query: string, lang: string = 'ar-SA', contentFilter: boolean = true) => {
+export const searchMovies = async (query: string, lang: string = 'ar-SA', _contentFilter: boolean = true) => {
   try {
-    const includeAdult = !contentFilter;
+    const includeAdult = true;
     const response = await api.get(`/search/multi?${getAuthParam()}&query=${encodeURIComponent(query)}&language=${lang}&include_adult=${includeAdult}`);
     return response.data.results;
   } catch (error) {
@@ -113,9 +146,9 @@ export const searchMovies = async (query: string, lang: string = 'ar-SA', conten
   }
 };
 
-export const searchOnlyMovies = async (query: string, lang: string = 'ar-SA', contentFilter: boolean = true) => {
+export const searchOnlyMovies = async (query: string, lang: string = 'ar-SA', _contentFilter: boolean = true) => {
   try {
-    const includeAdult = !contentFilter;
+    const includeAdult = true;
     const response = await api.get(`/search/movie?${getAuthParam()}&query=${encodeURIComponent(query)}&language=${lang}&include_adult=${includeAdult}`);
     return response.data.results.map((item: any) => ({ ...item, media_type: 'movie' }));
   } catch (error) {
@@ -124,9 +157,9 @@ export const searchOnlyMovies = async (query: string, lang: string = 'ar-SA', co
   }
 };
 
-export const searchTVShows = async (query: string, lang: string = 'ar-SA', contentFilter: boolean = true) => {
+export const searchTVShows = async (query: string, lang: string = 'ar-SA', _contentFilter: boolean = true) => {
   try {
-    const includeAdult = !contentFilter;
+    const includeAdult = true;
     const response = await api.get(`/search/tv?${getAuthParam()}&query=${encodeURIComponent(query)}&language=${lang}&include_adult=${includeAdult}`);
     return response.data.results.map((item: any) => ({ ...item, media_type: 'tv' }));
   } catch (error) {

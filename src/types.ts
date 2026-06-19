@@ -10,6 +10,7 @@ export interface Movie {
   vote_average: number;
   genre_ids: number[];
   media_type?: "movie" | "tv";
+  adult?: boolean;
 }
 
 export interface Video {

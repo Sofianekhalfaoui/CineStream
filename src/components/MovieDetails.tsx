@@ -77,7 +77,6 @@ import { useWatchParty } from '../context/WatchPartyContext';
 import { cn } from '../lib/utils';
 import { FastAverageColor } from 'fast-average-color';
 import MovieCard from './MovieCard';
-import AdsVerificationModal from './AdsVerificationModal';
 
 interface MovieDetailsProps {
   movie: Movie;
@@ -131,12 +130,10 @@ export default function MovieDetails({ movie, onClose }: MovieDetailsProps) {
   const [isSeasonOpen, setIsSeasonOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<PersonDetails | null>(null);
   const [personLoading, setPersonLoading] = useState(false);
-  const [isAdsModalOpen, setIsAdsModalOpen] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
   const handlePlayClick = (targetPath: string) => {
-    setPendingNavigation(targetPath);
-    setIsAdsModalOpen(true);
+    onClose();
+    navigate(targetPath);
   };
 
   const determinedMediaType = movie.media_type || ((movie.name || movie.first_air_date) ? 'tv' : 'movie');
@@ -148,6 +145,8 @@ export default function MovieDetails({ movie, onClose }: MovieDetailsProps) {
   const { startDownload, isDownloaded, downloadedMovies } = useDownloads();
   const { createRoom, roomId: activeRoomId } = useWatchParty();
   const [partyLoading, setPartyLoading] = useState(false);
+  const [showPartySummaryCard, setShowPartySummaryCard] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const hasDownloads = isTV 
     ? downloadedMovies.some(d => d.movieId === movie.id)
@@ -159,11 +158,17 @@ export default function MovieDetails({ movie, onClose }: MovieDetailsProps) {
   };
 
   const handleStartParty = async () => {
+    if (activeRoomId) {
+      setShowPartySummaryCard(true);
+      return;
+    }
     setPartyLoading(true);
     try {
       const type = isTV ? 'tv' : 'movie';
-      await createRoom(movie.id.toString(), type);
-      // Room created, the context will handle showing the code/syncing
+      const createdId = await createRoom(movie.id.toString(), type);
+      if (createdId) {
+        setShowPartySummaryCard(true);
+      }
     } catch (error) {
       console.error('Error starting party:', error);
     } finally {
@@ -577,26 +582,7 @@ export default function MovieDetails({ movie, onClose }: MovieDetailsProps) {
             </div>
           )}
 
-          {trendingToday.length > 0 && (
-            <div className="space-y-8 mt-10">
-              <div className={cn("flex items-center gap-3", isRTL && "flex-row-reverse")}>
-                <div className="w-1.5 h-5 bg-primary rounded-full" />
-                <h3 className="text-sm font-black text-white uppercase tracking-widest italic">
-                  {isRTL 
-                    ? (isTV ? "أفضل 10 مسلسلات اليوم" : "أفضل 10 أفلام اليوم") 
-                    : (isTV ? "Today's Top 10 Series" : "Today's Top 10 Movies")}
-                </h3>
-              </div>
-              
-              <div className={cn("flex gap-6 overflow-x-auto pb-12 scrollbar-hide", isRTL && "flex-row-reverse")}>
-                {trendingToday.map((m, index) => (
-                  <div key={m.id} className="min-w-[140px] md:min-w-[190px]">
-                    <MovieCard movie={m} rank={index} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+
         </div>
       </div>
 
@@ -748,19 +734,94 @@ export default function MovieDetails({ movie, onClose }: MovieDetailsProps) {
         )}
       </AnimatePresence>
 
-      <AdsVerificationModal
-        isOpen={isAdsModalOpen}
-        onClose={() => setIsAdsModalOpen(false)}
-        onComplete={() => {
-          setIsAdsModalOpen(false);
-          onClose();
-          if (pendingNavigation) {
-            navigate(pendingNavigation);
-            setPendingNavigation(null);
-          }
-        }}
-        movieTitle={movie.title || movie.name}
-      />
+      <AnimatePresence>
+        {showPartySummaryCard && (
+          <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPartySummaryCard(false)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-2xl"
+            />
+            
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 30 }}
+              transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              className="w-full max-w-md bg-[#0d091e]/85 border-2 border-purple-500/30 rounded-[2.5rem] p-8 relative z-10 shadow-[0_0_50px_rgba(139,92,246,0.3)] text-center overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-500" />
+              
+              <button 
+                onClick={() => setShowPartySummaryCard(false)}
+                className="absolute top-5 right-5 p-2.5 hover:bg-white/5 rounded-full text-gray-400 hover:text-white transition-all cursor-pointer outline-none"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <div className="space-y-6">
+                <div className="w-16 h-16 bg-purple-500/15 rounded-3xl flex items-center justify-center mx-auto shadow-inner border border-purple-500/20">
+                  <Users className="w-8 h-8 text-purple-400" />
+                </div>
+                
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-black text-white uppercase tracking-tight italic">
+                    {isRTL ? 'غرفة مشاهدة جاهزة' : 'Watch Party Ready'}
+                  </h3>
+                  <p className="text-gray-400 text-xs leading-relaxed max-w-xs mx-auto">
+                    {isRTL 
+                      ? 'شارك هذا الرمز المكون من 4 أرقام مع أصدقائك للانضمام ومشاركة المشاهدة في نفس اللحظة!' 
+                      : 'Share this 4-digit code with your friends to enjoy synchronized screening together!'}
+                  </p>
+                </div>
+                
+                {/* 4-Digit Beautiful Code Display */}
+                <div className="flex items-center justify-center gap-3" dir="ltr">
+                  {(activeRoomId || '').split('').map((char, index) => (
+                    <div 
+                      key={index}
+                      className="w-14 h-18 bg-[#150f2f] border border-purple-500/40 rounded-2xl flex items-center justify-center text-3xl font-black text-purple-300 drop-shadow-[0_0_15px_rgba(168,85,247,0.5)] shadow-inner select-none"
+                    >
+                      {char}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Copy/Share section */}
+                <div className="flex items-center justify-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (activeRoomId) {
+                        navigator.clipboard.writeText(activeRoomId);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }
+                    }}
+                    className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all border border-white/5 hover:border-white/10 active:scale-95 cursor-pointer outline-none flex items-center gap-1.5"
+                  >
+                    <span>{copied ? (isRTL ? 'تم النسخ!' : 'Copied!') : (isRTL ? 'نسخ الرمز' : 'Copy Code')}</span>
+                  </button>
+                </div>
+
+                <div className="pt-2">
+                  <button 
+                    onClick={() => {
+                      setShowPartySummaryCard(false);
+                      onClose();
+                      navigate(`/watch/${determinedMediaType}/${movie.id}${determinedMediaType === 'tv' ? '?s=1&e=1' : ''}`);
+                    }}
+                    className="w-full py-4.5 bg-[#5B4EFF] hover:bg-[#5b4eff]/80 text-white rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm shadow-xl shadow-[#5B4EFF]/30 transition-all active:scale-95 cursor-pointer outline-none"
+                  >
+                    {isRTL ? 'ابدأ غرفتك الآن' : 'Start Room Now'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSettings } from '../context/SettingsContext';
-import { getRequests, getTmdbLanguage, getImageUrl, fetchMovieVideos } from '../services/tmdb';
+import { getRequests, getTmdbLanguage, getImageUrl, fetchMovieVideos, filterAdultContent } from '../services/tmdb';
 import MovieCard from '../components/MovieCard';
 import MovieRow from '../components/MovieRow';
 import { useMovie } from '../context/MovieContext';
@@ -39,6 +39,7 @@ export default function TVShows() {
   const [isMuted, setIsMuted] = useState(true);
   const [trailerKey, setTrailerKey] = useState<string | null>(null);
   const [showVideo, setShowVideo] = useState(false);
+  const [startTrailer, setStartTrailer] = useState(false);
   const [isLoadingTrailer, setIsLoadingTrailer] = useState(false);
   
   const activeGenre = searchParams.get('genre') || 'all';
@@ -120,7 +121,10 @@ export default function TVShows() {
       const results = await Promise.all(promises);
       const newShows = results.flatMap(res => res.data?.results || []);
       
-      setShows(prev => isInitial ? newShows : [...prev, ...newShows]);
+      // Filter out adult/pornographic series if contentFilter is enabled
+      const filteredShows = filterAdultContent(newShows, settings.contentFilter);
+      
+      setShows(prev => isInitial ? filteredShows : [...prev, ...filteredShows]);
       if (isInitial) setInitialLoading(false);
     } catch (error) {
       console.error("Error fetching grid shows:", error);
@@ -142,7 +146,8 @@ export default function TVShows() {
       try {
         const response = await axios.get(fetchTrendingTVToday);
         if (response.data.results && response.data.results.length > 0) {
-          const top5 = response.data.results.slice(0, 5);
+          const filtered = filterAdultContent(response.data.results, settings.contentFilter);
+          const top5 = filtered.slice(0, 5);
           setTrendingToday(top5);
         }
       } catch (err) {
@@ -157,7 +162,7 @@ export default function TVShows() {
     } else {
       fetchGenreGridShows(1, true, activeGenre, activeTimeRange);
     }
-  }, [activeGenre, activeTimeRange, language]);
+  }, [activeGenre, activeTimeRange, language, settings.contentFilter]);
 
   // Load youtube video trail for current tv section slide after 5 seconds delay
   useEffect(() => {
@@ -166,6 +171,7 @@ export default function TVShows() {
     
     setTrailerKey(null);
     setShowVideo(false);
+    setStartTrailer(false);
     setIsLoadingTrailer(true);
 
     const selectedLang = language === 'ar' ? 'ar-SA' : language === 'fr' ? 'fr-FR' : 'en-US';
@@ -201,7 +207,15 @@ export default function TVShows() {
 
     loadTrailer();
 
-    const displayTimer = setTimeout(() => {
+    // Start video advertisement/trailer in background after 3 seconds (3000ms)
+    const startTrailerTimer = setTimeout(() => {
+      if (isSubscribed) {
+        setStartTrailer(true);
+      }
+    }, 3000);
+
+    // Fade out poster image with smooth motion style after 5 seconds (5000ms) to reveal video already in play
+    const fadePosterTimer = setTimeout(() => {
       if (isSubscribed) {
         setShowVideo(true);
       }
@@ -209,7 +223,8 @@ export default function TVShows() {
 
     return () => {
       isSubscribed = false;
-      clearTimeout(displayTimer);
+      clearTimeout(startTrailerTimer);
+      clearTimeout(fadePosterTimer);
     };
   }, [currentIndex, trendingToday, language]);
 
@@ -230,7 +245,7 @@ export default function TVShows() {
     };
   }, [currentIndex, trendingToday, trailerKey, isLoadingTrailer]);
 
-  const handleDragEnd = (_: any, info: any) => {
+  const handlePanEnd = (_: any, info: any) => {
     const swipeThreshold = 50;
     if (info.offset.x > swipeThreshold) {
       setCurrentIndex((prev) => (prev - 1 + trendingToday.length) % trendingToday.length);
@@ -380,15 +395,26 @@ export default function TVShows() {
       {activeGenre === 'all' && activeShowSlide && (
         <motion.header 
           id="hero-header-banner"
-          className="relative w-full h-[65vh] md:h-[80vh] overflow-hidden flex items-end cursor-grab active:cursor-grabbing touch-none select-none"
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.15}
-          onDragEnd={handleDragEnd}
+          className="relative w-full h-[75vh] md:h-[88vh] overflow-hidden flex items-end touch-pan-y select-none"
+          onPanEnd={handlePanEnd}
         >
           <div className="absolute inset-0 z-0 bg-black">
-            <AnimatePresence mode="wait">
-              {!showVideo || !trailerKey ? (
+            {/* Render the trailer after 3 seconds (startTrailer is true) so it plays/buffers in the background */}
+            {trailerKey && startTrailer && (
+              <div id={`hero-trailer-wrapper-${activeShowSlide.id}`} className="absolute inset-0 w-full h-full z-0">
+                <TrailerVideoPlayer
+                  videoKey={trailerKey}
+                  isMuted={isMuted}
+                  onEnded={() => {
+                    setCurrentIndex((prev) => (prev + 1) % trendingToday.length);
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Backdrop Image - displayed on top (z-10), fades out when showVideo is true to expose the running trailer */}
+            <AnimatePresence>
+              {(!showVideo || !trailerKey) && (
                 <motion.img
                   id={`hero-backdrop-img-${activeShowSlide.id}`}
                   key={`img-${activeShowSlide.id}`}
@@ -398,31 +424,13 @@ export default function TVShows() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.98 }}
                   transition={{ duration: 1.0, ease: "easeInOut" }}
-                  className="absolute inset-0 w-full h-full object-cover object-top filter brightness-[0.7] md:brightness-75 pointer-events-none"
+                  className="absolute inset-0 w-full h-full object-cover object-top pointer-events-none z-10"
                 />
-              ) : (
-                <motion.div
-                  id={`hero-trailer-wrapper-${activeShowSlide.id}`}
-                  key={`video-${activeShowSlide.id}`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 1.0 }}
-                  className="absolute inset-0 w-full h-full"
-                >
-                  <TrailerVideoPlayer
-                    videoKey={trailerKey}
-                    isMuted={isMuted}
-                    onEnded={() => {
-                      setCurrentIndex((prev) => (prev + 1) % trendingToday.length);
-                    }}
-                  />
-                </motion.div>
               )}
             </AnimatePresence>
 
-            <div className="absolute inset-0 bg-gradient-to-t from-[#070b19] via-transparent to-[#070b19]/40 z-10 pointer-events-none" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#070b19]/80 via-transparent to-[#070b19]/10 z-10 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#070b19] via-[#070b19]/30 to-transparent z-20 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#070b19]/60 via-transparent to-transparent z-20 pointer-events-none" />
           </div>
 
           <motion.button 

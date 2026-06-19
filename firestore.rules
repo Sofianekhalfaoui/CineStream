@@ -52,12 +52,14 @@ service cloud.firestore {
       return data.hostId is string
         && data.mediaId is string
         && data.mediaType in ['movie', 'tv']
-        && data.currentTime is number
-        && data.isPlaying is bool
         && data.participants is list
-        && data.lastUpdated is number
         && data.keys().hasAll(['hostId', 'mediaId', 'mediaType', 'currentTime', 'isPlaying', 'participants', 'lastUpdated'])
-        && data.keys().size() == 7;
+        && (!('currentServerIndex' in data) || data.currentServerIndex is int)
+        && (!('lastReaction' in data) || (
+          data.lastReaction is map
+          && data.lastReaction.emoji is string && data.lastReaction.emoji.size() <= 10
+          && data.lastReaction.userId is string
+        ));
     }
 
     // Match Groups
@@ -94,21 +96,32 @@ service cloud.firestore {
       allow get: if isSignedIn();
       allow list: if false;
       allow create: if isSignedIn() && isValidRoom(incoming()) && incoming().hostId == request.auth.uid;
-      allow update: if isSignedIn() && isValidRoom(incoming()) && (
-        // Host can update anything
-        existing().hostId == request.auth.uid ||
-        // Participants can only update their membership
+      allow update: if isSignedIn() && (
+        // Host can update anything as long as the new state is valid
+        (existing().hostId == request.auth.uid && isValidRoom(incoming())) ||
+        // A user can join the room (add themselves to participants)
         (
           incoming().diff(existing()).affectedKeys().hasOnly(['participants']) &&
-          incoming().participants.hasAll(existing().participants) &&
           incoming().participants.size() == existing().participants.size() + 1 &&
           incoming().participants.hasAny([request.auth.uid])
         ) ||
-        // Participants leaving
+        // A user can leave the room (remove themselves from participants)
         (
-          incoming().diff(existing()).affectedKeys().hasAll(['participants']) &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['participants']) &&
           incoming().participants.size() == existing().participants.size() - 1 &&
           !incoming().participants.hasAny([request.auth.uid])
+        ) ||
+        // A user can leave the room where they are host and reassign hostId
+        (
+          existing().hostId == request.auth.uid &&
+          (incoming().diff(existing()).affectedKeys().hasOnly(['participants', 'hostId']) || incoming().diff(existing()).affectedKeys().hasOnly(['participants'])) &&
+          incoming().participants.size() == existing().participants.size() - 1 &&
+          !incoming().participants.hasAny([request.auth.uid])
+        ) ||
+        // Anyone in the room (participants and host) can send a reaction
+        (
+          existing().participants.hasAny([request.auth.uid]) &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['lastReaction'])
         )
       );
       allow delete: if isSignedIn() && (existing().hostId == request.auth.uid || existing().participants.size() == 0);
