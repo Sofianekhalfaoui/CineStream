@@ -18,6 +18,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useSettings } from '../context/SettingsContext';
 import { getRequests, getTmdbLanguage, getImageUrl, fetchMovieVideos, filterAdultContent } from '../services/tmdb';
 import MovieCard from '../components/MovieCard';
+import { LOCAL_API } from '../constants';
 import MovieRow from '../components/MovieRow';
 import { useMovie } from '../context/MovieContext';
 import { useFavorites } from '../context/FavoritesContext';
@@ -134,11 +135,11 @@ export default function TVShows() {
   };
 
   const baseParams = requests.fetchTVShows.includes('?') ? requests.fetchTVShows.split('?')[1] : '';
-  const fetchTrendingTVToday = `/api/tmdb/trending/tv/day?${baseParams}`;
-  const fetchPopularTV = `/api/tmdb/tv/popular?${baseParams}`;
-  const fetchTopRatedTV = `/api/tmdb/tv/top_rated?${baseParams}`;
-  const fetchSciFiTV = `/api/tmdb/discover/tv?${baseParams}&with_genres=10765`;
-  const fetchActionTV = `/api/tmdb/discover/tv?${baseParams}&with_genres=10759`;
+  const fetchTrendingTVToday = `${LOCAL_API}/api/tmdb/trending/tv/day?${baseParams}`;
+  const fetchPopularTV = `${LOCAL_API}/api/tmdb/tv/popular?${baseParams}`;
+  const fetchTopRatedTV = `${LOCAL_API}/api/tmdb/tv/top_rated?${baseParams}`;
+  const fetchSciFiTV = `${LOCAL_API}/api/tmdb/discover/tv?${baseParams}&with_genres=10765`;
+  const fetchActionTV = `${LOCAL_API}/api/tmdb/discover/tv?${baseParams}&with_genres=10759`;
 
   // Fetch dynamic top 5 trending series of today & configure startup
   useEffect(() => {
