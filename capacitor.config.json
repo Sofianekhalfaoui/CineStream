@@ -1,0 +1,6 @@
+{
+  "appId": "com.sofianek.showtime",
+  "appName": "ShowTime",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
