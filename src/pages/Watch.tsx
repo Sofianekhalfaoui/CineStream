@@ -14,11 +14,10 @@ import { cn } from '../lib/utils';
 import { getTmdbLanguage, fetchPersonDetails, getImageUrl } from '../services/tmdb';
 import { Sparkles, Tv } from 'lucide-react';
 import CustomVideoPlayer from '../components/CustomVideoPlayer';
-import { LOCAL_API } from '../constants';
 
 import { FastAverageColor } from 'fast-average-color';
 
-const BASE_TMDB_URL = `${LOCAL_API}/api/tmdb`;
+const BASE_TMDB_URL = '/api/tmdb';
 
 const SAMPLE_VIDEOS = [
   {
@@ -490,7 +489,7 @@ export default function Watch() {
         
         // 1. Initial fetch with basic info, videos, and external_ids
         const response = await fetch(
-          `${LOCAL_API}/api/tmdb/${mediaType}/${id}?api_key=${apiKey}&append_to_response=images,content_ratings,release_dates,videos,external_ids,credits&language=${tmdbLang}`
+          `/api/tmdb/${mediaType}/${id}?api_key=${apiKey}&append_to_response=images,content_ratings,release_dates,videos,external_ids,credits&language=${tmdbLang}`
         );
         
         if (!response.ok) {
@@ -503,7 +502,7 @@ export default function Watch() {
         if (isTrailer) {
           // Attempt to fetch from local API (server-side)
           try {
-            const localRes = await fetch(`${LOCAL_API}/api/trailer/${mediaType}/${id}`);
+            const localRes = await fetch(`/api/trailer/${mediaType}/${id}`);
             if (localRes.ok) {
               const localData = await localRes.json();
               if (localData.key) {
@@ -521,7 +520,7 @@ export default function Watch() {
           // 2. If no videos found in initial fetch, try a dedicated videos call with the same language
           if (videos.length === 0) {
             const vidRes = await fetch(
-              `${LOCAL_API}/api/tmdb/${mediaType}/${id}/videos?api_key=${apiKey}&language=${tmdbLang}`
+              `/api/tmdb/${mediaType}/${id}/videos?api_key=${apiKey}&language=${tmdbLang}`
             );
             const vidData = await vidRes.json();
             videos = vidData.results || [];
@@ -530,7 +529,7 @@ export default function Watch() {
           // 3. Fallback: try fetching with multiple languages if still empty
           if (videos.length === 0) {
             const vidResLang = await fetch(
-              `${LOCAL_API}/api/tmdb/${mediaType}/${id}/videos?api_key=${apiKey}&include_video_language=${language},en,null`
+              `/api/tmdb/${mediaType}/${id}/videos?api_key=${apiKey}&include_video_language=${language},en,null`
             );
             const vidDataLang = await vidResLang.json();
             videos = vidDataLang.results || [];
@@ -561,7 +560,7 @@ export default function Watch() {
           const apiKey = import.meta.env.VITE_TMDB_API_KEY || '826d7088b7762696612143ad0bf99e28';
           const tmdbLang = getTmdbLanguage(language);
           const res = await fetch(
-            `${LOCAL_API}/api/tmdb/tv/${id}/season/${season}?api_key=${apiKey}&language=${tmdbLang}`
+            `/api/tmdb/tv/${id}/season/${season}?api_key=${apiKey}&language=${tmdbLang}`
           );
           if (res.ok) {
             const data = await res.json();

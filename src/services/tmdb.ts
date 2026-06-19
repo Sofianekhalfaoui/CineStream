@@ -1,14 +1,13 @@
 /// <reference types="vite/client" />
 import axios from 'axios';
 import { Movie } from '../types';
-import { LOCAL_API } from '../constants';
 
 const api_key = import.meta.env.VITE_TMDB_API_KEY;
 const isV4Token = api_key && api_key.length > 50;
 
 export const hasApiKey = !!api_key && api_key !== 'undefined' && api_key !== '';
 
-const BASE_URL = `${LOCAL_API}/api/tmdb`;
+const BASE_URL = '/api/tmdb';
 
 const api = axios.create({
   baseURL: BASE_URL,
