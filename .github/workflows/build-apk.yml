@@ -35,7 +35,12 @@ jobs:
         run: npm install -g @capacitor/cli
 
       - name: Sync Capacitor Project
-        run: npx cap sync
+        run: |
+          if [ ! -d "android" ]; then
+            echo "Android directory not found. Adding Android platform via Capacitor..."
+            npx cap add android
+          fi
+          npx cap sync
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
