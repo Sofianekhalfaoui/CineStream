@@ -264,8 +264,10 @@ export default function Navbar() {
       <nav 
         dir="ltr"
         className={cn(
-          "fixed top-0 w-full z-50 transition-all duration-300 px-4 py-4 md:px-12 flex items-center justify-between",
-          "bg-gradient-to-b from-black/60 to-transparent dark:from-black/60",
+          "fixed top-0 w-full z-50 transition-all duration-300 px-4 py-3 md:px-12 flex items-center justify-between",
+          isScrolled || !isHome
+            ? "bg-[#070b19]/95 backdrop-blur-md border-b border-white/10 shadow-lg shadow-black/40"
+            : "bg-gradient-to-b from-black/80 to-transparent"
         )}
       >
         {/* Left Section: Logo, Back button (on subpages) and desktop links */}
