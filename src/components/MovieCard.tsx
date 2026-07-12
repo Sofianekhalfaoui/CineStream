@@ -17,11 +17,10 @@ export default function MovieCard({ movie, isLarge, rank }: MovieCardProps) {
 
   return (
     <motion.div
-      tabIndex={0}
       onClick={() => setSelectedMovie(movie)}
       whileHover={{ scale: 1.05, zIndex: 10 }}
       whileTap={{ scale: 0.95 }}
-      className="flex flex-col gap-2 min-w-[140px] md:min-w-[190px] cursor-pointer group rounded-xl outline-none"
+      className="flex flex-col gap-2 min-w-[140px] md:min-w-[190px] cursor-pointer group"
     >
       <div className="relative aspect-[2/3] w-full">
         {rank !== undefined && (

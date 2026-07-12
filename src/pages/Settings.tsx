@@ -1032,7 +1032,7 @@ export default function Settings() {
                         initial={{ opacity: 0, scale: 0.5 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.5 }}
-                        className="bg-black/20 w-full h-full flex items-center justify-center"
+                        className="bg-black/20 w-full h-full flex items-center justify-center backdrop-blur-[2px]"
                       >
                         <Check className="w-5 h-5 text-white" />
                       </motion.div>
@@ -1071,7 +1071,7 @@ export default function Settings() {
                       <motion.div
                         initial={{ opacity: 0, scale: 0.5 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="bg-black/20 w-full h-full flex items-center justify-center"
+                        className="bg-black/20 w-full h-full flex items-center justify-center backdrop-blur-[2px]"
                       >
                         <Check className="w-5 h-5 text-white" />
                       </motion.div>

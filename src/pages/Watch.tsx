@@ -587,10 +587,7 @@ export default function Watch() {
   };
 
   const handleBack = () => {
-    const lastCatalogPath = sessionStorage.getItem('lastCatalogPath');
-    if (lastCatalogPath) {
-      navigate(lastCatalogPath);
-    } else {
+    if (window.history.length <= 1) {
       if (mediaType === 'tv') {
         navigate('/tv');
       } else if (mediaType === 'movie') {
@@ -598,6 +595,8 @@ export default function Watch() {
       } else {
         navigate('/');
       }
+    } else {
+      navigate(-1);
     }
   };
 

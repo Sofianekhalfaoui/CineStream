@@ -74,33 +74,4 @@
   :root {
     --plyr-color-main: var(--primary-color, #E50914);
   }
-
-  /* Android TV D-Pad Focus & Active Effects */
-  button:focus-visible,
-  a:focus-visible,
-  input:focus-visible,
-  select:focus-visible,
-  textarea:focus-visible,
-  [tabindex="0"]:focus-visible,
-  [role="button"]:focus-visible,
-  .tv-focusable:focus-visible {
-    outline: none !important;
-    box-shadow: 0 0 0 3px var(--primary-color, #E50914), 0 0 25px var(--primary-color, #E50914) !important;
-    transform: scale(1.05) !important;
-    border-color: var(--primary-color, #E50914) !important;
-    z-index: 50 !important;
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out !important;
-  }
-
-  /* Smooth transitions for all focusable elements */
-  button,
-  a,
-  input,
-  select,
-  textarea,
-  [tabindex="0"],
-  [role="button"],
-  .tv-focusable {
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
-  }
 }

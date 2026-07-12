@@ -6,7 +6,7 @@
 import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import MovieDetails from './components/MovieDetails';
 import { hasApiKey } from './services/tmdb';
@@ -31,7 +31,6 @@ import Watch from './pages/Watch';
 import DownloadPage from './pages/DownloadPage';
 import Downloads from './pages/Downloads';
 import NotFound from './pages/NotFound';
-import { initSpatialNavigation } from './lib/spatialNavigation';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -45,24 +44,6 @@ function AppContent() {
   const { selectedMovie, setSelectedMovie } = useMovie();
   const { settings } = useSettings();
   const location = useLocation();
-  const navigate = useNavigate();
-
-  React.useEffect(() => {
-    (window as any).customNavigate = (path: string) => {
-      navigate(path);
-    };
-  }, [navigate]);
-
-  React.useEffect(() => {
-    if (!location.pathname.startsWith('/watch')) {
-      sessionStorage.setItem('lastCatalogPath', location.pathname + location.search);
-    }
-  }, [location]);
-
-  React.useEffect(() => {
-    const cleanup = initSpatialNavigation();
-    return cleanup;
-  }, []);
 
   React.useEffect(() => {
     document.documentElement.style.setProperty('--primary-color', settings.accentColor);
@@ -70,12 +51,15 @@ function AppContent() {
   }, [settings.accentColor]);
 
   React.useEffect(() => {
-    // Force dark mode on document element for absolute consistency
-    document.documentElement.classList.add('dark');
-  }, []);
+    if (settings.darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [settings.darkMode]);
 
   return (
-    <div className="min-h-screen bg-[#070b19] text-white transition-colors duration-300">
+    <div className="min-h-screen bg-white text-gray-900 dark:bg-[#070b19] dark:text-white transition-colors duration-300">
       {!hasApiKey && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl p-6 text-center">
           <div className="max-w-md space-y-6">

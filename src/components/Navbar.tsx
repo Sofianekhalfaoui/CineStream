@@ -264,10 +264,8 @@ export default function Navbar() {
       <nav 
         dir="ltr"
         className={cn(
-          "fixed top-0 w-full z-50 transition-all duration-300 px-4 py-3 md:px-12 flex items-center justify-between",
-          isScrolled || !isHome
-            ? "bg-[#070b19]/95 backdrop-blur-md border-b border-white/10 shadow-lg shadow-black/40"
-            : "bg-gradient-to-b from-black/80 to-transparent"
+          "fixed top-0 w-full z-50 transition-all duration-300 px-4 py-4 md:px-12 flex items-center justify-between",
+          "bg-gradient-to-b from-black/60 to-transparent dark:from-black/60",
         )}
       >
         {/* Left Section: Logo, Back button (on subpages) and desktop links */}
@@ -361,9 +359,9 @@ export default function Navbar() {
           {!isHome && !['/movies', '/tv'].includes(location.pathname) && (
             <button 
               onClick={() => navigate('/')}
-              className="p-2 md:p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-all active:scale-90"
+              className="p-2 md:p-2.5 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10 rounded-full transition-all active:scale-90"
             >
-              {isRTL ? <ArrowRight className="w-6 h-6 text-white" /> : <ArrowLeft className="w-6 h-6 text-white" />}
+              {isRTL ? <ArrowRight className="w-6 h-6 text-gray-900 dark:text-white" /> : <ArrowLeft className="w-6 h-6 text-gray-900 dark:text-white" />}
             </button>
           )}
 
@@ -389,7 +387,7 @@ export default function Navbar() {
                       animate={{ width: window.innerWidth < 768 ? 'calc(50vw + 60px)' : 500, opacity: 1 }}
                       exit={{ width: 0, opacity: 0 }}
                       className={cn(
-                        "absolute top-1/2 -translate-y-1/2 flex flex-row items-center bg-[#121212]/95 border border-white/20 rounded-full h-12 md:h-14 overflow-hidden z-[65] shadow-2xl backdrop-blur-3xl",
+                        "absolute top-1/2 -translate-y-1/2 flex flex-row items-center bg-white dark:bg-white/10 border border-gray-200 dark:border-white/20 rounded-full h-12 md:h-14 overflow-hidden z-[65] shadow-2xl backdrop-blur-3xl",
                         "right-0 origin-right"
                       )}
                     >
@@ -407,7 +405,7 @@ export default function Navbar() {
                           }}
                           placeholder={t('searchPlaceholder')}
                           className={cn(
-                            "bg-transparent border-none outline-none text-white text-sm md:text-base flex-1 placeholder:text-gray-500",
+                            "bg-transparent border-none outline-none text-gray-900 dark:text-white text-sm md:text-base flex-1 placeholder:text-gray-500",
                             isRTL ? "text-right" : "text-left"
                           )}
                         />
@@ -419,7 +417,7 @@ export default function Navbar() {
                             isRTL ? "mr-1" : "ml-1"
                           )}
                         >
-                          <Mic className="w-5 h-5 text-gray-400" />
+                          <Mic className="w-5 h-5" />
                         </button>
                         <button 
                           onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} 
@@ -432,9 +430,9 @@ export default function Navbar() {
                   ) : (
                     <button 
                       onClick={() => setIsSearchOpen(true)}
-                      className="p-2 md:p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-all active:scale-90"
+                      className="p-2 md:p-2.5 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10 rounded-full transition-all active:scale-90"
                     >
-                      <Search className="w-5 h-5 text-white" />
+                      <Search className="w-5 h-5 text-gray-900 dark:text-white" />
                     </button>
                   )}
                 </AnimatePresence>
@@ -602,11 +600,11 @@ export default function Navbar() {
               <button 
                 type="button"
                 onClick={() => setIsLangOpen(!isLangOpen)}
-                className="p-2 md:p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-all active:scale-90 flex items-center justify-center gap-1"
+                className="p-2 md:p-2.5 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10 rounded-full transition-all active:scale-90 flex items-center justify-center gap-1"
                 title={isRTL ? 'تغيير اللغة' : 'Change Language'}
               >
-                <Globe className="w-5 h-5 text-white" />
-                <span className="text-[10px] md:text-xs font-black uppercase text-white">{language}</span>
+                <Globe className="w-5 h-5 text-gray-900 dark:text-white" />
+                <span className="text-[10px] md:text-xs font-black uppercase text-gray-900 dark:text-white">{language}</span>
               </button>
 
               <AnimatePresence>
@@ -615,7 +613,7 @@ export default function Navbar() {
                     initial={{ opacity: 0, scale: 0.95, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                    className="absolute top-14 right-0 w-40 bg-[#121212]/95 backdrop-blur-3xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-[70] origin-top-right"
+                    className="absolute top-14 right-0 w-40 bg-white dark:bg-[#121212]/95 backdrop-blur-3xl border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-2xl z-[70] origin-top-right"
                   >
                     <div className="p-1.5 space-y-1 max-h-64 overflow-y-auto scrollbar-thin">
                       {[
@@ -643,7 +641,7 @@ export default function Navbar() {
                             "w-full text-right ltr:text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-start gap-2",
                             language === lang.code 
                               ? "bg-primary text-white" 
-                              : "text-gray-300 hover:bg-white/10 hover:text-white"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white"
                           )}
                         >
                           {lang.label}
@@ -659,12 +657,12 @@ export default function Navbar() {
             <div ref={menuRef} className="relative">
               <button 
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2 md:p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-all active:scale-90"
+                className="p-2 md:p-2.5 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10 rounded-full transition-all active:scale-90"
               >
                 {isMenuOpen ? (
-                  <X className="w-6 h-6 text-white" />
+                  <X className="w-6 h-6 text-gray-900 dark:text-white" />
                 ) : (
-                  <Menu className="w-6 h-6 text-white" />
+                  <Menu className="w-6 h-6 text-gray-900 dark:text-white" />
                 )}
               </button>
 
@@ -675,7 +673,7 @@ export default function Navbar() {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 10 }}
                     className={cn(
-                      "absolute top-14 w-64 bg-[#121212]/95 backdrop-blur-2xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-[70] right-0 origin-top-right"
+                      "absolute top-14 w-64 bg-white dark:bg-black/40 backdrop-blur-2xl border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-2xl z-[70] right-0 origin-top-right"
                     )}
                   >
                     <div className="p-3 space-y-1">
@@ -687,17 +685,17 @@ export default function Navbar() {
                           className={cn(
                             "w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all group",
                             isRTL ? "flex-row-reverse text-right" : "flex-row text-left",
-                            item.dangerous ? "hover:bg-primary/10 text-primary" : "hover:bg-white/5 text-gray-400 hover:text-white"
+                            item.dangerous ? "hover:bg-primary/10 text-primary" : "hover:bg-gray-100 dark:hover:bg-white/5 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                           )}
                         >
-                          <item.icon className={cn("w-5 h-5", item.dangerous ? "text-primary" : "text-gray-400 group-hover:text-primary")} />
+                          <item.icon className={cn("w-5 h-5", item.dangerous ? "text-primary" : "text-gray-500 dark:text-gray-400 group-hover:text-primary")} />
                           <span className="text-sm font-black uppercase tracking-widest">{item.label}</span>
                         </Link>
                       ))}
                     </div>
                     {user ? (
-                      <Link to="/profile" className={cn("bg-white/5 p-3 flex items-center gap-3 cursor-pointer hover:bg-white/10 transition-colors", isRTL && "flex-row-reverse")}>
-                        <div className="w-8 h-8 rounded-full bg-primary overflow-hidden border border-white/10 shrink-0">
+                      <Link to="/profile" className={cn("bg-gray-50 dark:bg-white/5 p-3 flex items-center gap-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 transition-colors", isRTL && "flex-row-reverse")}>
+                        <div className="w-8 h-8 rounded-full bg-primary overflow-hidden border border-gray-200 dark:border-white/10 shrink-0">
                           <img 
                             src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}&background=e50914&color=fff`} 
                             alt={user.displayName || 'User'} 
@@ -705,22 +703,22 @@ export default function Navbar() {
                           />
                         </div>
                         <div className={cn("flex flex-col overflow-hidden", isRTL ? "text-right" : "text-left")}>
-                          <span className="text-[10px] font-black text-white uppercase tracking-tight truncate">
+                          <span className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-tight truncate">
                             {user.displayName}
                           </span>
-                          <span className="text-[8px] font-bold text-gray-500 uppercase">{t('premium')} Member</span>
+                          <span className="text-[8px] font-bold text-gray-400 dark:text-gray-500 uppercase">{t('premium')} Member</span>
                         </div>
                       </Link>
                     ) : (
-                      <Link to="/profile" className={cn("bg-white/5 p-3 flex items-center gap-3 cursor-pointer hover:bg-white/10 transition-colors", isRTL && "flex-row-reverse")}>
-                        <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center border border-white/10 shrink-0">
-                          <UserIcon className="w-4 h-4 text-gray-400" />
+                      <Link to="/profile" className={cn("bg-gray-50 dark:bg-white/5 p-3 flex items-center gap-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 transition-colors", isRTL && "flex-row-reverse")}>
+                        <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center border border-gray-200 dark:border-white/10 shrink-0">
+                          <UserIcon className="w-4 h-4 text-gray-400 dark:text-gray-400" />
                         </div>
                         <div className={cn("flex flex-col", isRTL ? "text-right" : "text-left")}>
-                          <span className="text-[10px] font-black text-white uppercase tracking-tight">
+                          <span className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-tight">
                             {isRTL ? 'تسجيل الدخول' : 'Guest User'}
                           </span>
-                          <span className="text-[8px] font-bold text-gray-500 uppercase">{isRTL ? 'انقر لتسجيل الدخول' : 'Click to Sign In'}</span>
+                          <span className="text-[8px] font-bold text-gray-400 dark:text-gray-500 uppercase">{isRTL ? 'انقر لتسجيل الدخول' : 'Click to Sign In'}</span>
                         </div>
                       </Link>
                     )}
