@@ -1,20 +1,53 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# 🎬 Cinematic
 
-# Run and deploy your AI Studio app
+تطبيق شامل لمشاهدة الأفلام والمسلسلات
 
-This contains everything you need to run your app locally.
+## 🚀 الميزات
 
-View your app in AI Studio: https://ai.studio/apps/81bb9ff1-c5b0-47f7-a049-a8899b633830
+- 🎥 مشاهدة الأفلام والمسلسلات
+- 📱 تطبيق جوال (Android و iOS)
+- 🌙 واجهة أنيقة وسهلة الاستخدام
+- 🔐 تسجيل آمن
+- 💾 حفظ المفضلة
 
-## Run Locally
+## 🛠️ التقنيات المستخدمة
 
-**Prerequisites:**  Node.js
+- React 19 + TypeScript
+- Vite (Build Tool)
+- Tailwind CSS
+- Firebase
+- Capacitor (لتحويل الويب إلى تطبيق موبايل)
+- Plyr (مشغل الفيديو)
 
+## 📦 التثبيت والتشغيل
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### متطلبات المشروع
+- Node.js 18+
+- npm أو yarn
+
+### التشغيل المحلي
+```bash
+npm install
+npm run dev
+```
+
+### بناء التطبيق
+```bash
+npm run build
+```
+
+### تحويل إلى APK
+```bash
+npm run cap:sync
+npm run cap:open
+```
+
+ثم افتح المشروع في Android Studio وقم ببناء APK.
+
+## 📱 بناء APK تلقائياً
+
+يتم بناء APK تلقائياً عند الدفع إلى فرع `main` من خلال GitHub Actions.
+
+## 📄 الترخيص
+
+MIT License
